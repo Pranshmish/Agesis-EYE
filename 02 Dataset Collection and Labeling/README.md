@@ -73,11 +73,27 @@ python extract_frames.py --video "../01 Camera Stream and Record/raw_video/sessi
 
 ---
 
-### 3. Lightweight Labeling Tool (`label_helper.py`)
-Fast, offline OpenCV tool to annotate bounding boxes without needing external software:
+### 3. Automatic Bounding Box Labeler (`auto_label.py`)
+Automatically detects the balloon and tracks it across all session frames:
 ```bash
-# Label extracted frames
-python label_helper.py --dir raw_frames/daylight_near
+# Auto-label frames in session_01
+python auto_label.py --dir raw_frames/session_01
+
+# Run with visual inspection window
+python auto_label.py --dir raw_frames/session_01 --show
+```
+- Uses circle contour geometry and specular darkness analysis to locate the balloon.
+- Writes standard YOLO `.txt` annotations for all frames automatically.
+- Automatically marks frames as negative (empty file) if the balloon is occluded or absent.
+- Generates `auto_label_preview.jpg` (a 3x3 sample grid) for instant verification.
+
+---
+
+### 4. Manual Labeling Tool (`label_helper.py`)
+Lightweight, offline OpenCV tool if you wish to adjust or manually inspect boxes:
+```bash
+# Label or review extracted frames
+python label_helper.py --dir raw_frames/session_01
 ```
 **Controls:**
 - **Mouse Drag**: Draw box around balloon
@@ -89,7 +105,7 @@ python label_helper.py --dir raw_frames/daylight_near
 
 ---
 
-### 4. Organize YOLO Dataset (`organize_dataset.py`)
+### 5. Organize YOLO Dataset (`organize_dataset.py`)
 Splits frames **strictly by session** (no frame leakage between splits) and creates `data.yaml`:
 ```bash
 # Auto-split (~70% train, ~20% val, ~10% test by session)
