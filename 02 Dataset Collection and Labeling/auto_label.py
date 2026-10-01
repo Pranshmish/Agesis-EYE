@@ -69,18 +69,26 @@ def detect_balloon_circle(img, last_box=None):
         if bw < 20 or bh < 20:
             continue
 
+        # Suppress stationary background desk fan in lower-right
+        if cx > 185 and cy > 155:
+            continue
+
         crop = gray[y1:y2, x1:x2]
         mean_brightness = np.mean(crop)
+        max_brightness = np.max(crop)
 
-        # Balloon body is predominantly dark (mean < 95)
+        # Balloon body is dark with specular highlight
         if mean_brightness > 95:
             continue
 
         score = r
+        if max_brightness > 130:
+            score += 40  # Specular reflection bonus
+
         # Temporal proximity bonus if we have a previous box
         if last_box is not None:
             lx, ly, lbw, lbh = last_box
-            lcx, lcy = lx + lbw / 2, ly + lbh / 2
+            lcx, lcy = lx + lbw / 2.0, ly + lbh / 2.0
             dist = np.hypot(cx - lcx, cy - lcy)
             if dist < 80:
                 score += 50
