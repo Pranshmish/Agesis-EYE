@@ -48,58 +48,85 @@ def find_sessions(indir):
     return sessions
 
 
-def copy_session(session_name, indir, outdir, split, labelsdir):
-    """Copy a session's images and labels into the dataset split."""
-    src_dir = os.path.join(indir, session_name)
+def copy_file_pair(img_src, label_name, src_dir, outdir, split, labelsdir, session_name):
     img_dst = os.path.join(outdir, "images", split)
     lbl_dst = os.path.join(outdir, "labels", split)
     os.makedirs(img_dst, exist_ok=True)
     os.makedirs(lbl_dst, exist_ok=True)
 
+    f = os.path.basename(img_src)
+    shutil.copy2(img_src, os.path.join(img_dst, f))
+
+    label_found = False
+    for lbl_src in [
+        os.path.join(src_dir, label_name),
+        os.path.join(labelsdir, session_name, label_name),
+        os.path.join(labelsdir, label_name),
+    ]:
+        if os.path.exists(lbl_src):
+            shutil.copy2(lbl_src, os.path.join(lbl_dst, label_name))
+            label_found = True
+            break
+
+    meta_path = os.path.join(src_dir, f.replace('.jpg', '.json'))
+    if not label_found and os.path.exists(meta_path):
+        import json
+        try:
+            with open(meta_path) as mf:
+                meta = json.load(mf)
+                if meta.get("negative", False):
+                    open(os.path.join(lbl_dst, label_name), 'w').close()
+                    label_found = True
+        except Exception:
+            pass
+
+    if not label_found:
+        open(os.path.join(lbl_dst, label_name), 'w').close()
+
+
+def copy_session(session_name, indir, outdir, split, labelsdir):
+    """Copy an entire session's images and labels into the dataset split."""
+    src_dir = os.path.join(indir, session_name)
     copied = 0
     for f in sorted(os.listdir(src_dir)):
-        if not f.endswith('.jpg'):
+        if not f.endswith('.jpg') or "preview" in f or "result" in f:
             continue
-
-        # Copy image
-        shutil.copy2(os.path.join(src_dir, f), os.path.join(img_dst, f))
-
-        # Look for label file
-        label_name = f.replace('.jpg', '.txt')
-        label_found = False
-
-        # Check multiple possible label locations
-        for lbl_src in [
-            os.path.join(src_dir, label_name),           # Same dir as image
-            os.path.join(labelsdir, session_name, label_name),  # labels/session/
-            os.path.join(labelsdir, label_name),          # labels/
-        ]:
-            if os.path.exists(lbl_src):
-                shutil.copy2(lbl_src, os.path.join(lbl_dst, label_name))
-                label_found = True
-                break
-
-        # Check if this is a negative frame (from metadata)
-        meta_path = os.path.join(src_dir, f.replace('.jpg', '.json'))
-        if not label_found and os.path.exists(meta_path):
-            import json
-            try:
-                with open(meta_path) as mf:
-                    meta = json.load(mf)
-                    if meta.get("negative", False):
-                        # Create empty label file for negative
-                        open(os.path.join(lbl_dst, label_name), 'w').close()
-                        label_found = True
-            except Exception:
-                pass
-
-        if not label_found:
-            # Create empty label (unlabeled = negative by default)
-            open(os.path.join(lbl_dst, label_name), 'w').close()
-
+        copy_file_pair(os.path.join(src_dir, f), f.replace('.jpg', '.txt'),
+                       src_dir, outdir, split, labelsdir, session_name)
         copied += 1
-
     return copied
+
+
+def copy_session_partitioned(session_name, indir, outdir, labelsdir, train_ratio=0.7, val_ratio=0.2):
+    """Partition a single session's frames into train, val, test chunks."""
+    src_dir = os.path.join(indir, session_name)
+    all_files = [f for f in sorted(os.listdir(src_dir))
+                 if f.endswith('.jpg') and "preview" not in f and "result" not in f]
+    n = len(all_files)
+    n_train = max(1, int(n * train_ratio))
+    n_val = max(1, int(n * val_ratio))
+
+    train_files = all_files[:n_train]
+    val_files = all_files[n_train:n_train + n_val]
+    test_files = all_files[n_train + n_val:]
+
+    counts = {"train": 0, "val": 0, "test": 0}
+    for f in train_files:
+        copy_file_pair(os.path.join(src_dir, f), f.replace('.jpg', '.txt'),
+                       src_dir, outdir, "train", labelsdir, session_name)
+        counts["train"] += 1
+
+    for f in val_files:
+        copy_file_pair(os.path.join(src_dir, f), f.replace('.jpg', '.txt'),
+                       src_dir, outdir, "val", labelsdir, session_name)
+        counts["val"] += 1
+
+    for f in test_files:
+        copy_file_pair(os.path.join(src_dir, f), f.replace('.jpg', '.txt'),
+                       src_dir, outdir, "test", labelsdir, session_name)
+        counts["test"] += 1
+
+    return counts
 
 
 def create_data_yaml(outdir, class_names=None):
@@ -146,9 +173,9 @@ def main():
     print(f"\n[+] Found {len(sessions)} session(s) in '{args.indir}':")
     total_frames = 0
     for name, count in sessions:
-        print(f"    {name:30s} → {count} frames")
+        print(f"    {name:30s} -> {count} frames")
         total_frames += count
-    print(f"    {'TOTAL':30s} → {total_frames} frames\n")
+    print(f"    {'TOTAL':30s} -> {total_frames} frames\n")
 
     # Determine splits
     train_sessions = []
@@ -160,19 +187,23 @@ def main():
         val_sessions = [s.strip() for s in args.val.split(',')] if args.val else []
         test_sessions = [s.strip() for s in args.test.split(',')] if args.test else []
     elif args.auto:
-        names = [s[0] for s in sessions]
-        n = len(names)
-        if n == 1:
-            train_sessions = names
-        elif n == 2:
-            train_sessions = names[:1]
-            val_sessions = names[1:]
-        else:
-            n_train = max(1, int(n * 0.7))
-            n_val = max(1, int(n * 0.2))
-            train_sessions = names[:n_train]
-            val_sessions = names[n_train:n_train + n_val]
-            test_sessions = names[n_train + n_val:]
+        # Auto mode: if 1 or 2 sessions, partition by frames to guarantee train, val, and test splits
+        print(f"[+] Auto-partitioning frames into 70% train, 20% val, 10% test...")
+        total_counts = {"train": 0, "val": 0, "test": 0}
+        for name, _ in sessions:
+            c = copy_session_partitioned(name, args.indir, args.outdir, args.labelsdir)
+            total_counts["train"] += c["train"]
+            total_counts["val"] += c["val"]
+            total_counts["test"] += c["test"]
+            print(f"    {name}: train={c['train']}, val={c['val']}, test={c['test']}")
+
+        yaml_path = create_data_yaml(args.outdir)
+        print(f"\n{'=' * 50}")
+        print(f"  Dataset ready!")
+        print(f"  Train: {total_counts['train']} | Val: {total_counts['val']} | Test: {total_counts['test']}")
+        print(f"  data.yaml: {yaml_path}")
+        print(f"{'=' * 50}")
+        return
     else:
         # Interactive
         print("Assign each session to a split (t=train, v=val, e=test, s=skip):")
@@ -203,17 +234,17 @@ def main():
     for s in train_sessions:
         n = copy_session(s, args.indir, args.outdir, "train", args.labelsdir)
         counts["train"] += n
-        print(f"    train ← {s} ({n} frames)")
+        print(f"    train <- {s} ({n} frames)")
 
     for s in val_sessions:
         n = copy_session(s, args.indir, args.outdir, "val", args.labelsdir)
         counts["val"] += n
-        print(f"    val   ← {s} ({n} frames)")
+        print(f"    val   <- {s} ({n} frames)")
 
     for s in test_sessions:
         n = copy_session(s, args.indir, args.outdir, "test", args.labelsdir)
         counts["test"] += n
-        print(f"    test  ← {s} ({n} frames)")
+        print(f"    test  <- {s} ({n} frames)")
 
     # Create data.yaml
     yaml_path = create_data_yaml(args.outdir)
