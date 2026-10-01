@@ -130,7 +130,9 @@ def parse_args():
     p.add_argument("--session", default="session_01", help="Session name (e.g. daylight_near, negative_room)")
     p.add_argument("--negative", action="store_true", help="Mark all captures as negative (no balloon)")
     p.add_argument("--auto", type=float, default=0, help="Auto-capture interval in seconds (0=manual)")
-    p.add_argument("--outdir", default="raw_frames", help="Output directory")
+    p.add_argument("--outdir", default="raw_frames", help="Output directory for frames")
+    p.add_argument("--videodir", default="raw_video", help="Output directory for full video (default: raw_video)")
+    p.add_argument("--no-video", action="store_true", help="Disable simultaneous continuous video recording")
     return p.parse_args()
 
 
@@ -169,12 +171,32 @@ def main():
     captured = 0
     existing = len([f for f in os.listdir(session_dir) if f.endswith('.jpg')])
 
+    record_video = not args.no_video
+    video_writer = None
+    video_path = None
+    video_frames_count = 0
+
+    first_frame = reader.get_latest()
+    if first_frame is not None and record_video:
+        fh, fw = first_frame.shape[:2]
+        os.makedirs(args.videodir, exist_ok=True)
+        ts = time.strftime("%Y%m%d_%H%M%S")
+        video_path = os.path.join(args.videodir, f"{ts}_{args.session}_{fw}x{fh}.avi")
+        fourcc = cv2.VideoWriter_fourcc(*'XVID')
+        video_writer = cv2.VideoWriter(video_path, fourcc, 20.0, (fw, fh))
+        print(f"[+] Recording video to: {video_path}")
+
     try:
         while True:
             frame = reader.get_latest()
             if frame is None:
                 time.sleep(0.01)
                 continue
+
+            # Record frame to continuous video
+            if video_writer is not None and record_video:
+                video_writer.write(frame)
+                video_frames_count += 1
 
             display = frame.copy()
             h, w = display.shape[:2]
@@ -192,6 +214,10 @@ def main():
 
             cap_mode = f"AUTO {auto_interval:.1f}s" if auto_capture else "MANUAL (SPACE)"
             cv2.putText(display, cap_mode, (15, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 255), 1)
+
+            if record_video:
+                cv2.circle(display, (w - 75, 20), 6, (0, 0, 255), -1)
+                cv2.putText(display, "REC", (w - 62, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
 
             info = f"Session: {args.session} | Captured: {existing + captured} | Stream: {reader.fps:.0f} FPS"
             cv2.putText(display, info, (15, h - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.38, (200, 200, 200), 1)
@@ -214,6 +240,9 @@ def main():
             elif key == ord('a'):
                 auto_capture = not auto_capture
                 print(f"  Auto-capture: {'ON' if auto_capture else 'OFF'} ({auto_interval:.1f}s)")
+            elif key == ord('r'):
+                record_video = not record_video
+                print(f"  Video recording: {'ON' if record_video else 'OFF'}")
             elif key == ord('+') or key == ord('='):
                 auto_interval = min(5.0, auto_interval + 0.1)
                 print(f"  Auto interval: {auto_interval:.1f}s")
@@ -250,6 +279,8 @@ def main():
         pass
     finally:
         reader.release()
+        if video_writer is not None:
+            video_writer.release()
         cv2.destroyAllWindows()
 
         print(f"\n{'=' * 40}")
@@ -257,6 +288,8 @@ def main():
         print(f"  Frames captured: {captured}")
         print(f"  Total in session: {existing + captured}")
         print(f"  Saved to: {session_dir}")
+        if video_path and video_frames_count > 0:
+            print(f"  Video saved: {video_path} ({video_frames_count} frames)")
         print(f"{'=' * 40}")
 
 
