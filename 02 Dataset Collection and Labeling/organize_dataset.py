@@ -130,12 +130,12 @@ def copy_session_partitioned(session_name, indir, outdir, labelsdir, train_ratio
 
 
 def create_data_yaml(outdir, class_names=None):
-    """Create YOLO data.yaml file."""
+    """Create YOLO data.yaml file with relative path for Kaggle/local portability."""
     if class_names is None:
         class_names = {0: "balloon"}
 
     data = {
-        "path": os.path.abspath(outdir),
+        "path": ".",
         "train": "images/train",
         "val": "images/val",
         "test": "images/test",
@@ -149,7 +149,7 @@ def create_data_yaml(outdir, class_names=None):
             yaml.dump(data, f, default_flow_style=False, sort_keys=False)
     else:
         with open(yaml_path, 'w') as f:
-            f.write(f"path: {os.path.abspath(outdir).replace(os.sep, '/')}\n")
+            f.write("path: .\n")
             f.write("train: images/train\n")
             f.write("val: images/val\n")
             f.write("test: images/test\n")
@@ -189,6 +189,10 @@ def main():
     elif args.auto:
         # Auto mode: if 1 or 2 sessions, partition by frames to guarantee train, val, and test splits
         print(f"[+] Auto-partitioning frames into 70% train, 20% val, 10% test...")
+        for sub in ["images", "labels"]:
+            subpath = os.path.join(args.outdir, sub)
+            if os.path.exists(subpath):
+                shutil.rmtree(subpath)
         total_counts = {"train": 0, "val": 0, "test": 0}
         for name, _ in sessions:
             c = copy_session_partitioned(name, args.indir, args.outdir, args.labelsdir)

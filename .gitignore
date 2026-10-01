@@ -59,4 +59,6 @@ yarn-debug.log*
 *.tar
 *.gz
 raw_frames/
+raw_video/
 dataset/
+*.avi
