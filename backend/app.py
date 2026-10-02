@@ -75,11 +75,7 @@ latest_telemetry = {
     "conf_threshold": 0.35,
     "cam_fps": 0.0,
     "connected": False,
-    "pan": 90.0,
-    "tilt": 90.0,
-    "laser_armed": False,
-    "laser_firing": False,
-    "is_simulated": True,
+    **turret.get_state()
 }
 
 
@@ -92,11 +88,16 @@ def mjpeg_generator():
         frame = stream_reader.get_latest()
         if frame is None:
             # Standby blank frame with connecting status
+            latest_telemetry.update({
+                **turret.get_state(),
+                "connected": stream_reader.connected,
+                "cam_fps": round(stream_reader.fps, 1),
+            })
             standby = cv2.imread(os.path.join(BACKEND_DIR, "standby.jpg"))
             if standby is None:
-                standby = 25 * np.ones((240, 320, 3), dtype=np.uint8)
-                cv2.putText(standby, "CONNECTING TO CAMERA...", (25, 125),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 200, 255), 1)
+                standby = 20 * np.ones((240, 320, 3), dtype=np.uint8)
+                cv2.putText(standby, "ACQUIRING STREAM...", (35, 125),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (35, 25, 255), 1)
             _, jpeg = cv2.imencode(".jpg", standby, encode_param)
             yield (b"--frame\r\n"
                    b"Content-Type: image/jpeg\r\n\r\n" + jpeg.tobytes() + b"\r\n")
@@ -165,6 +166,31 @@ def update_config(cfg: ConfigModel):
     return {"status": "ok", "telemetry": latest_telemetry}
 
 
+class DistanceModel(BaseModel):
+    distance_mm: float
+
+
+@app.post("/api/turret/distance")
+def set_servo_distance(d: DistanceModel):
+    """Adjust physical distance between the 2 servos and auto-recalibrate kinematics."""
+    state = turret.set_servo_distance(d.distance_mm)
+    return state
+
+
+@app.post("/api/turret/calibrate/start")
+def start_turret_calibration():
+    """Start autonomous 2-servo calibration movement."""
+    started = turret.start_auto_calibration()
+    return {"status": "started" if started else "already_running", "turret": turret.get_state()}
+
+
+@app.post("/api/turret/calibrate/stop")
+def stop_turret_calibration():
+    """Halt active calibration sequence and center servos."""
+    state = turret.stop_auto_calibration()
+    return {"status": "stopped", "turret": state}
+
+
 class NudgeModel(BaseModel):
     pan: float = 0.0
     tilt: float = 0.0
@@ -208,7 +234,13 @@ async def websocket_telemetry(ws: WebSocket):
     await ws.accept()
     try:
         while True:
-            await ws.send_text(json.dumps(latest_telemetry))
+            data = json.dumps(
+                latest_telemetry,
+                default=lambda o: int(o) if isinstance(o, (np.integer, np.int64, np.int32)) else (
+                    float(o) if isinstance(o, (np.floating, np.float32, np.float64)) else str(o)
+                )
+            )
+            await ws.send_text(data)
             await asyncio.sleep(0.04)  # 25 Hz updates
     except WebSocketDisconnect:
         pass

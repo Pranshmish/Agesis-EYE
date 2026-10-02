@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Header from './components/Header';
 import Viewport from './components/Viewport';
+import DigitalTwin from './components/DigitalTwin';
 import TelemetryCard from './components/TelemetryCard';
 import TurretCard from './components/TurretCard';
 import ControlsCard from './components/ControlsCard';
@@ -13,6 +14,7 @@ export default function App() {
   const [confThreshold, setConfThreshold] = useState(0.35);
   const [isDiscovering, setIsDiscovering] = useState(false);
   const [toast, setToast] = useState({ message: '', visible: false });
+  const [viewMode, setViewMode] = useState('FEED'); // 'FEED' | 'TWIN' | 'SPLIT'
 
   const wsRef = useRef(null);
   const toastTimeoutRef = useRef(null);
@@ -64,7 +66,6 @@ export default function App() {
       };
 
       ws.onerror = () => {
-        // Fallback to polling if WebSocket encounters an error
         if (!pollInterval && isMounted) {
           pollInterval = setInterval(fetchTelemetry, 100);
         }
@@ -127,7 +128,7 @@ export default function App() {
   const handleToggleLaser = async () => {
     const nextArmed = !telemetry?.laser_armed;
     if (nextArmed) {
-      if (!window.confirm('⚠️ CAUTION: Arm laser emitter?\nEnsure laser safety eyewear is worn!')) {
+      if (!window.confirm('CAUTION: Arm high-power targeting laser emitter?\nConfirm laser safety eyewear is deployed before proceeding.')) {
         return;
       }
     }
@@ -137,7 +138,7 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ laser_armed: nextArmed }),
       });
-      showToast(`Laser Emitter: ${nextArmed ? 'ARMED' : 'SAFE / DISARMED'}`);
+      showToast(`Laser Interlock: ${nextArmed ? 'ARMED / HOT' : 'SAFE / DISARMED'}`);
     } catch (e) {
       showToast('Failed to toggle laser');
     }
@@ -204,40 +205,109 @@ export default function App() {
   const handleCenter = async () => {
     try {
       await fetch('/api/turret/center', { method: 'POST' });
-      showToast('Turret centered to (90°, 90°)');
+      showToast('Turret neutral calibrated to (90.0, 90.0)');
+    } catch (e) {}
+  };
+
+  // Inter-Servo Distance adjustment
+  const handleDistanceChange = async (distanceMm) => {
+    try {
+      const res = await fetch('/api/turret/distance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ distance_mm: distanceMm }),
+      });
+      const data = await res.json();
+      if (data) {
+        setTelemetry((prev) => ({ ...prev, ...data }));
+        showToast(`Servo separation set to ${distanceMm}mm`);
+      }
+    } catch (e) {
+      showToast('Failed to update servo separation distance');
+    }
+  };
+
+  // Automated Calibration Movement start
+  const handleStartCalibration = async () => {
+    try {
+      showToast('Initiating autonomous 2-servo calibration movement...');
+      const res = await fetch('/api/turret/calibrate/start', { method: 'POST' });
+      const data = await res.json();
+      if (data.turret) {
+        setTelemetry((prev) => ({ ...prev, ...data.turret }));
+      }
+    } catch (e) {
+      showToast('Failed to start calibration routine');
+    }
+  };
+
+  // Automated Calibration Movement stop
+  const handleStopCalibration = async () => {
+    try {
+      const res = await fetch('/api/turret/calibrate/stop', { method: 'POST' });
+      const data = await res.json();
+      if (data.turret) {
+        setTelemetry((prev) => ({ ...prev, ...data.turret }));
+      }
+      showToast('Calibration sequence aborted');
     } catch (e) {}
   };
 
   return (
     <>
       <div className="hud-scanline"></div>
-      <Header telemetry={telemetry} connected={connected} />
+      <Header
+        telemetry={telemetry}
+        connected={connected}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+      />
 
-      <main className="dashboard-grid">
-        <Viewport
-          telemetry={telemetry}
-          streamSrc={streamSrc}
-          onSnapshot={handleSnapshot}
-          onToggleEnhance={handleToggleEnhance}
-          onToggleLaser={handleToggleLaser}
-        />
-
-        <aside className="sidebar-section">
-          <TelemetryCard telemetry={telemetry} />
-          <TurretCard
+      <main className={`dashboard-grid mode-${viewMode.toLowerCase()}`}>
+        {/* VIEW 1: Standard CAMERA HUD */}
+        {(viewMode === 'FEED' || viewMode === 'SPLIT') && (
+          <Viewport
             telemetry={telemetry}
-            onNudge={handleNudge}
-            onCenter={handleCenter}
+            streamSrc={streamSrc}
+            onSnapshot={handleSnapshot}
+            onToggleEnhance={handleToggleEnhance}
+            onToggleLaser={handleToggleLaser}
           />
-          <ControlsCard
-            confThreshold={confThreshold}
-            onConfChange={handleConfChange}
-            currentSource={telemetry?.source}
-            onSaveSource={handleSaveSource}
-            onDiscover={handleDiscover}
-            isDiscovering={isDiscovering}
+        )}
+
+        {/* VIEW 2: 3D MOTION TRAJECTORY DIGITAL TWIN */}
+        {(viewMode === 'TWIN' || viewMode === 'SPLIT') && (
+          <DigitalTwin
+            telemetry={telemetry}
+            onDistanceChange={handleDistanceChange}
+            isLaserArmed={!!telemetry?.laser_armed}
+            isLaserFiring={!!telemetry?.laser_firing}
           />
-        </aside>
+        )}
+
+        {/* Tactical Control Sidebar (Always accessible or streamlined) */}
+        {viewMode !== 'TWIN' && (
+          <aside className="sidebar-section">
+            <TelemetryCard telemetry={telemetry} />
+            <TurretCard
+              telemetry={telemetry}
+              onNudge={handleNudge}
+              onCenter={handleCenter}
+              onDistanceChange={handleDistanceChange}
+              onStartCalibration={handleStartCalibration}
+              onStopCalibration={handleStopCalibration}
+              onOpenDigitalTwin={() => setViewMode('TWIN')}
+            />
+            <ControlsCard
+              confThreshold={confThreshold}
+              onConfChange={handleConfChange}
+              currentSource={telemetry?.source}
+              onSaveSource={handleSaveSource}
+              onDiscover={handleDiscover}
+              isDiscovering={isDiscovering}
+            />
+          </aside>
+        )}
       </main>
 
       <Toast toast={toast} />

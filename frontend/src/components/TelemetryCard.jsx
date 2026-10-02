@@ -32,53 +32,49 @@ export default function TelemetryCard({ telemetry }) {
   const confPct = Math.round(conf * 100);
 
   return (
-    <div className="tactical-card">
+    <div className="tactical-card telemetry-card-compact">
       <div className="card-header">
-        <h2 className="card-title">TARGET TELEMETRY</h2>
-        <span className="card-badge">SECTOR: {targetPos}</span>
-      </div>
-      <div className="card-body">
-        <div className="stat-row">
-          <div className="stat-block">
-            <span className="stat-label">LOCK STATE</span>
-            <span className={`stat-val status-badge-inline ${lockStateClass}`}>
-              {lockStateLabel}
-            </span>
-          </div>
-          <div className="stat-block">
-            <span className="stat-label">STREAK / LOCK</span>
-            <div className="streak-meter">
-              <span className="stat-val">{streak}</span>
-              <span className="stat-sub">/ 3 FRAMES</span>
-            </div>
-          </div>
+        <div className="card-title-group">
+          <svg className="card-title-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+          </svg>
+          <h2 className="card-title">TARGET TELEMETRY</h2>
         </div>
+        <div className="header-status-group">
+          <span className="card-badge">SECTOR: {targetPos}</span>
+          <span className={`status-badge-pill ${lockStateClass}`}>
+            {lockStateLabel} {streak > 0 && !isLocked ? `(${streak}/3)` : ''}
+          </span>
+        </div>
+      </div>
 
+      <div className="card-body">
         {/* Aiming Vector Coordinate Displacements */}
-        <div className="vector-grid">
-          <div className="vector-item">
-            <span className="vector-name">ΔX (AZIMUTH)</span>
+        <div className="vector-grid-compact">
+          <div className="vector-row">
+            <span className="vector-name">AZIMUTH ΔX</span>
             <div className="vector-bar-wrap">
               <div className="vector-bar-fill x-axis" style={barXStyle}></div>
             </div>
-            <span className="vector-val">{dx >= 0 ? `+${dx}` : dx} px</span>
+            <span className="vector-val">{dx >= 0 ? `+${dx}` : dx}px</span>
           </div>
-          <div className="vector-item">
-            <span className="vector-name">ΔY (ELEVATION)</span>
+
+          <div className="vector-row">
+            <span className="vector-name">ELEVATION ΔY</span>
             <div className="vector-bar-wrap">
               <div className="vector-bar-fill y-axis" style={barYStyle}></div>
             </div>
-            <span className="vector-val">{dy >= 0 ? `+${dy}` : dy} px</span>
+            <span className="vector-val">{dy >= 0 ? `+${dy}` : dy}px</span>
           </div>
         </div>
 
-        {/* Confidence Meter */}
-        <div className="confidence-container">
-          <div className="conf-header">
-            <span className="conf-label">DETECTION CONFIDENCE</span>
-            <span className="conf-val">{confPct}%</span>
+        {/* Confidence Meter Inline */}
+        <div className="confidence-row-compact">
+          <div className="conf-label-inline">
+            <span>AI CONFIDENCE</span>
+            <span className="conf-pct-num">{confPct}%</span>
           </div>
-          <div className="progress-track">
+          <div className="progress-track conf-track">
             <div className="progress-fill" style={{ width: `${confPct}%` }}></div>
           </div>
         </div>

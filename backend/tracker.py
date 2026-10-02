@@ -305,68 +305,61 @@ class BalloonTracker:
             self.target_conf = 0.0
             self.target_pos = "NONE"
 
-        # Render Annotated Tactical HUD
+        # Render Minimalist Tactical Target Overlays
         annotated = frame.copy()
 
-        # Optical Center Reticle
-        cv2.drawMarker(annotated, (cx_optical, cy_optical), (80, 80, 80),
-                       markerType=cv2.MARKER_CROSS, markerSize=24, thickness=1)
-        cv2.circle(annotated, (cx_optical, cy_optical), 28, (70, 70, 70), 1)
+        # Ultra-minimal center optical crosshair (subtle gray)
+        cv2.drawMarker(annotated, (cx_optical, cy_optical), (60, 60, 60),
+                       markerType=cv2.MARKER_CROSS, markerSize=18, thickness=1)
 
-        # Peripheral FOV Guidelines
-        left_lim = int(0.12 * w_orig)
-        right_lim = int(0.88 * w_orig)
-        cv2.line(annotated, (left_lim, 28), (left_lim, h_orig - 10), (45, 45, 45), 1, cv2.LINE_AA)
-        cv2.line(annotated, (right_lim, 28), (right_lim, h_orig - 10), (45, 45, 45), 1, cv2.LINE_AA)
-
+        # Minimalist Bounding Box (Blood Red / Crimson Tactical Corners)
         if self.best_box is not None:
             x1, y1, x2, y2, c = self.best_box
             bx_c = (x1 + x2) // 2
             by_c = (y1 + y2) // 2
 
-            # Green when target lock confirmed, Orange during acquisition
-            color = (0, 255, 120) if self.locked else (0, 165, 255)
-            thickness = 3 if self.locked else 2
+            # Blood Red (BGR): Active Lock = (30, 20, 255) Vibrant Red, Acquiring = (20, 100, 240) Ember Red
+            color = (35, 25, 255) if self.locked else (20, 110, 245)
+            
+            # 1. Subtle thin bounding frame
+            cv2.rectangle(annotated, (x1, y1), (x2, y2), color, 1, cv2.LINE_AA)
 
-            cv2.rectangle(annotated, (x1, y1), (x2, y2), color, thickness)
-            cv2.circle(annotated, (bx_c, by_c), 5, (0, 0, 255), -1)
-            cv2.line(annotated, (cx_optical, cy_optical), (bx_c, by_c), (0, 240, 255), 1)
+            # 2. Sleek Corner Brackets (sexy tactical reticle look)
+            corner_len = max(6, min(14, (x2 - x1) // 4, (y2 - y1) // 4))
+            t = 2  # thickness
+            # Top-Left
+            cv2.line(annotated, (x1, y1), (x1 + corner_len, y1), color, t)
+            cv2.line(annotated, (x1, y1), (x1, y1 + corner_len), color, t)
+            # Top-Right
+            cv2.line(annotated, (x2, y1), (x2 - corner_len, y1), color, t)
+            cv2.line(annotated, (x2, y1), (x2, y1 + corner_len), color, t)
+            # Bottom-Left
+            cv2.line(annotated, (x1, y2), (x1 + corner_len, y2), color, t)
+            cv2.line(annotated, (x1, y2), (x1, y2 - corner_len), color, t)
+            # Bottom-Right
+            cv2.line(annotated, (x2, y2), (x2 - corner_len, y2), color, t)
+            cv2.line(annotated, (x2, y2), (x2, y2 - corner_len), color, t)
 
-            lbl = f"BALLOON {c*100:.1f}% [{self.target_pos}] | dX:{self.dx:+d} dY:{self.dy:+d}"
-            (lw, lh), _ = cv2.getTextSize(lbl, cv2.FONT_HERSHEY_SIMPLEX, 0.42, 1)
-            cv2.rectangle(annotated, (x1, max(0, y1 - 20)), (x1 + lw + 6, max(20, y1)), color, -1)
-            cv2.putText(annotated, lbl, (x1 + 3, max(15, y1 - 5)),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.42, (0, 0, 0), 1, cv2.LINE_AA)
+            # Target Center Reticle Point
+            cv2.drawMarker(annotated, (bx_c, by_c), color, markerType=cv2.MARKER_CROSS, markerSize=10, thickness=1)
 
-        # Status Top HUD Bar
-        cv2.rectangle(annotated, (0, 0), (w_orig, 26), (18, 18, 18), -1)
-        if self.locked:
-            status_txt = f"LOCKED ({self.streak})"
-            s_color = (0, 255, 120)
-        elif self.streak > 0:
-            status_txt = f"ACQUIRING ({self.streak}/{self.lock_threshold})"
-            s_color = (0, 165, 255)
-        else:
-            status_txt = "SEARCHING..."
-            s_color = (80, 80, 255)
-
-        cv2.putText(annotated, status_txt, (8, 18), cv2.FONT_HERSHEY_SIMPLEX, 0.46, s_color, 2)
-        hud_txt = f"Latency:{self.latency_ms:.0f}ms | Conf:{self.conf:.2f} | EP-CLAHE:{'ON' if self.enhance else 'OFF'}"
-        (hw, _), _ = cv2.getTextSize(hud_txt, cv2.FONT_HERSHEY_SIMPLEX, 0.35, 1)
-        cv2.putText(annotated, hud_txt, (w_orig - hw - 8, 18), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (220, 220, 220), 1)
+            # Minimalist Clean Tag (no bulky background, sharp text)
+            tag_text = f"TRGT {c*100:.0f}%"
+            cv2.putText(annotated, tag_text, (x1, max(12, y1 - 4)),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.38, color, 1, cv2.LINE_AA)
 
         telemetry = {
-            "locked": self.locked,
-            "streak": self.streak,
-            "lock_threshold": self.lock_threshold,
-            "dx": self.dx,
-            "dy": self.dy,
-            "conf": round(self.target_conf, 3),
-            "target_pos": self.target_pos,
-            "latency_ms": round(self.latency_ms, 1),
-            "enhance": self.enhance,
-            "conf_threshold": self.conf,
-            "has_target": self.best_box is not None
+            "locked": bool(self.locked),
+            "streak": int(self.streak),
+            "lock_threshold": int(self.lock_threshold),
+            "dx": int(self.dx),
+            "dy": int(self.dy),
+            "conf": float(round(self.target_conf, 3)),
+            "target_pos": str(self.target_pos),
+            "latency_ms": float(round(self.latency_ms, 1)),
+            "enhance": bool(self.enhance),
+            "conf_threshold": float(self.conf),
+            "has_target": bool(self.best_box is not None)
         }
 
         return annotated, telemetry
