@@ -61,4 +61,10 @@ yarn-debug.log*
 raw_frames/
 raw_video/
 dataset/
+dataset_ep_clahe/
+kaggle_dataset_staging/
+scratch/
+runs/
+work/
+yolov8n.pt
 *.avi

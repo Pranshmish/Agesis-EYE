@@ -176,7 +176,7 @@ def run_training_kernel():
         json.dump(kernel_metadata, f, indent=2)
 
     print(f"[+] Pushing training kernel '{username}/{KERNEL_SLUG}' with GPU enabled...")
-    api.kernel_push(staging_dir)
+    api.kernels_push(staging_dir)
     print(f"[+] Kernel submitted! Running in background on Kaggle GPU.")
     print(f"    Check status with: python train_kaggle_api.py --status")
 
@@ -189,7 +189,7 @@ def check_status():
 
     username = get_username()
     kernel_ref = f"{username}/{KERNEL_SLUG}"
-    status = api.kernel_status(kernel_ref)
+    status = api.kernels_status(kernel_ref)
     print(f"\n[+] Kernel: {kernel_ref}")
     print(f"[+] Status: {status.get('status', 'unknown')}")
     if status.get("failureMessage"):
@@ -209,7 +209,7 @@ def download_output():
     os.makedirs(out_dir, exist_ok=True)
 
     print(f"[+] Downloading output files from '{kernel_ref}' into: {out_dir}")
-    api.kernel_output(kernel_ref, path=out_dir)
+    api.kernels_output(kernel_ref, path=out_dir)
     print("[+] Download complete! Files saved:")
     for f in os.listdir(out_dir):
         print(f"    - {f}")
