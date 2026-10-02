@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agesis EYE - Tactical Vision & Autonomous Turret Station</title>
+  <meta name="description" content="Real-time autonomous tracking and targeting ground station for Agesis EYE pan-tilt turret.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="hud-scanline"></div>
+
+  <!-- Top Navigation / Telemetry Header -->
+  <header class="tactical-header">
+    <div class="header-brand">
+      <div class="brand-radar-icon">
+        <div class="radar-sweep"></div>
+      </div>
+      <div>
+        <h1 class="brand-title">AGESIS <span class="accent-text">EYE</span></h1>
+        <p class="brand-subtitle">AUTONOMOUS TARGETING SYSTEM // STAGE 04 GROUND STATION</p>
+      </div>
+    </div>
+
+    <div class="header-telemetry-badges">
+      <div class="badge-item">
+        <span class="badge-label">MODEL</span>
+        <span class="badge-value" id="badge-model">agesis06.onnx</span>
+      </div>
+      <div class="badge-item">
+        <span class="badge-label">LATENCY</span>
+        <span class="badge-value text-cyan" id="badge-latency">-- ms</span>
+      </div>
+      <div class="badge-item">
+        <span class="badge-label">STREAM FPS</span>
+        <span class="badge-value text-emerald" id="badge-fps">-- FPS</span>
+      </div>
+      <div class="badge-item status-pill" id="badge-connection">
+        <span class="status-dot"></span>
+        <span id="badge-connection-text">CONNECTING</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Grid Dashboard -->
+  <main class="dashboard-grid">
+    <!-- Center Left: Live Video & HUD Viewport -->
+    <section class="viewport-section">
+      <div class="video-container" id="video-frame-box">
+        <!-- Live Video Stream -->
+        <img id="video-stream" src="/api/stream" alt="Agesis EYE Live Tracking Feed">
+        
+        <!-- Tactical HUD Reticle Overlay Elements -->
+        <div class="hud-corners">
+          <div class="corner corner-tl"></div>
+          <div class="corner corner-tr"></div>
+          <div class="corner corner-bl"></div>
+          <div class="corner corner-br"></div>
+        </div>
+
+        <!-- Center Crosshair Reticle -->
+        <div class="crosshair-wrapper">
+          <div class="crosshair-circle"></div>
+          <div class="crosshair-dot"></div>
+          <div class="crosshair-line line-h"></div>
+          <div class="crosshair-line line-v"></div>
+        </div>
+
+        <!-- Dynamic Lock Banner -->
+        <div class="lock-banner searching" id="lock-banner">
+          <span class="lock-icon">◎</span>
+          <span id="lock-banner-text">SEARCHING TARGET...</span>
+        </div>
+
+        <!-- FOV Edge Indicators -->
+        <div class="fov-edge-label left" id="fov-left-label">EXTREME LEFT</div>
+        <div class="fov-edge-label right" id="fov-right-label">EXTREME RIGHT</div>
+      </div>
+
+      <!-- Quick Action Toolbar -->
+      <div class="viewport-toolbar">
+        <div class="toolbar-left">
+          <button class="btn btn-secondary" id="btn-snapshot" title="Save annotated snapshot">
+            <span class="btn-icon">📷</span> SNAPSHOT
+          </button>
+          <button class="btn btn-toggle" id="btn-enhance" title="Toggle EP-CLAHE domain adaptation">
+            <span class="btn-icon">✨</span> EP-CLAHE <span class="toggle-pill" id="pill-enhance">OFF</span>
+          </button>
+        </div>
+
+        <div class="toolbar-right">
+          <div class="laser-arm-control">
+            <span class="laser-arm-label">LASER EMITTER:</span>
+            <button class="btn-laser-toggle safe" id="btn-laser-arm">
+              <span class="laser-indicator"></span>
+              <span id="laser-btn-text">SAFE / DISARMED</span>
+            </button>
+          </div>
+          <button class="btn btn-icon-only" id="btn-fullscreen" title="Toggle Fullscreen">⛶</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Sidebar: Telemetry & Controls -->
+    <aside class="sidebar-section">
+      <!-- Target Tracking Telemetry Card -->
+      <div class="tactical-card">
+        <div class="card-header">
+          <h2 class="card-title">TARGET TELEMETRY</h2>
+          <span class="card-badge" id="telemetry-sector-badge">SECTOR: CENTER</span>
+        </div>
+        <div class="card-body">
+          <div class="stat-row">
+            <div class="stat-block">
+              <span class="stat-label">LOCK STATE</span>
+              <span class="stat-val status-badge-inline searching" id="stat-lock-state">SEARCHING</span>
+            </div>
+            <div class="stat-block">
+              <span class="stat-label">STREAK / LOCK</span>
+              <div class="streak-meter">
+                <span class="stat-val" id="stat-streak">0</span>
+                <span class="stat-sub">/ 3 FRAMES</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Aiming Vector Coordinate Displacements -->
+          <div class="vector-grid">
+            <div class="vector-item">
+              <span class="vector-name">ΔX (AZIMUTH OFFSET)</span>
+              <div class="vector-bar-wrap">
+                <div class="vector-bar-fill x-axis" id="bar-dx"></div>
+              </div>
+              <span class="vector-val" id="val-dx">+0 px</span>
+            </div>
+            <div class="vector-item">
+              <span class="vector-name">ΔY (ELEVATION OFFSET)</span>
+              <div class="vector-bar-wrap">
+                <div class="vector-bar-fill y-axis" id="bar-dy"></div>
+              </div>
+              <span class="vector-val" id="val-dy">+0 px</span>
+            </div>
+          </div>
+
+          <!-- Confidence Meter -->
+          <div class="confidence-container">
+            <div class="conf-header">
+              <span class="conf-label">DETECTION CONFIDENCE</span>
+              <span class="conf-val" id="val-conf">0.0%</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill" id="conf-progress-bar"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Turret Actuation & Calibration Card -->
+      <div class="tactical-card">
+        <div class="card-header">
+          <h2 class="card-title">TURRET KINEMATICS</h2>
+          <span class="card-badge" id="turret-mode-badge">SIMULATED</span>
+        </div>
+        <div class="card-body">
+          <div class="servo-angles-display">
+            <div class="servo-box">
+              <span class="servo-label">PAN (AZIMUTH)</span>
+              <span class="servo-deg" id="val-pan">90.0°</span>
+            </div>
+            <div class="servo-box">
+              <span class="servo-label">TILT (ELEVATION)</span>
+              <span class="servo-deg" id="val-tilt">90.0°</span>
+            </div>
+          </div>
+
+          <!-- Manual D-Pad Test Controls -->
+          <div class="dpad-container">
+            <div class="dpad-row">
+              <button class="dpad-btn" id="dpad-up" title="Tilt Up">▲</button>
+            </div>
+            <div class="dpad-row">
+              <button class="dpad-btn" id="dpad-left" title="Pan Left">◀</button>
+              <button class="dpad-btn center-btn" id="dpad-center" title="Center Turret">◉</button>
+              <button class="dpad-btn" id="dpad-right" title="Pan Right">▶</button>
+            </div>
+            <div class="dpad-row">
+              <button class="dpad-btn" id="dpad-down" title="Tilt Down">▼</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings & Stream Source Card -->
+      <div class="tactical-card">
+        <div class="card-header">
+          <h2 class="card-title">STREAM & THRESHOLD CONTROLS</h2>
+        </div>
+        <div class="card-body">
+          <!-- Confidence Threshold Slider -->
+          <div class="slider-group">
+            <div class="slider-header">
+              <label for="slider-conf">Confidence Threshold:</label>
+              <span class="slider-val" id="val-slider-conf">0.35</span>
+            </div>
+            <input type="range" id="slider-conf" min="0.10" max="0.90" step="0.05" value="0.35">
+            <div class="slider-ticks">
+              <span>0.10</span>
+              <span>0.35 (Optimal)</span>
+              <span>0.90</span>
+            </div>
+          </div>
+
+          <!-- Camera Stream Source Input -->
+          <div class="input-group">
+            <label for="input-stream-url">Camera Stream URL / Source:</label>
+            <div class="input-action-row">
+              <input type="text" id="input-stream-url" value="http://10.96.117.1:81/stream">
+              <button class="btn btn-secondary btn-sm" id="btn-save-source">CONNECT</button>
+            </div>
+            <button class="btn btn-outline btn-sm full-width mt-2" id="btn-discover">
+              🔍 AUTO-DISCOVER ESP32
+            </button>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Snapshot Notification Toast -->
+  <div class="toast-notification" id="toast">
+    <span class="toast-icon">✓</span>
+    <span id="toast-message">Snapshot saved successfully!</span>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

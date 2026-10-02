@@ -2,16 +2,19 @@
 # Agesis EYE - Git Ignore Configuration
 # ========================================================
 
-# Python & Bytecode
+# Python & Virtual Environments
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
 env/
+venv/
+ENV/
+.venv/
 build/
-develop-eggs/
 dist/
+develop-eggs/
 downloads/
 eggs/
 .eggs/
@@ -25,19 +28,12 @@ wheels/
 .installed.cfg
 *.egg
 
-# Virtual Environments
-venv/
-ENV/
-env/
-.venv/
-
-# Binaries & Local Executables
+# Binaries & Tooling
 *.exe
 *.dll
 *.dylib
 *.bin
 *.elf
-tools/*.exe
 
 # IDE & Editor Configurations
 .vscode/
@@ -46,13 +42,11 @@ tools/*.exe
 *.swo
 *~
 .directory
-
-# Operating System Files
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# Logs & Temporary Caches
+# Logs & Caches
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -60,13 +54,15 @@ yarn-debug.log*
 .pytest_cache/
 
 # ========================================================
-# Datasets & Raw Media (RESTRICTED FROM PUBLIC WORKSHOP REPO)
+# PRIVATE INSTRUCTOR ASSETS (RESTRICTED FROM PUBLIC REPO)
 # ========================================================
-raw_frames/
-raw_video/
-dataset/
-dataset_ep_clahe/
-01 Camera Stream and Record/raw_video/
+training/
+scratch/
+runs/
+work/
+kaggle_dataset_staging/
+dataset*/
+raw_*/
 *.avi
 *.mp4
 *.zip
@@ -74,27 +70,3 @@ dataset_ep_clahe/
 *.gz
 esp32_snap_*.jpg
 auto_label_preview.jpg
-
-# ========================================================
-# Experimental Scratch, Runs & Staging Directories
-# ========================================================
-scratch/
-runs/
-work/
-kaggle_dataset_staging/
-yolov8n.pt
-
-# ========================================================
-# Stage 03 Training Pipelines (INSTRUCTOR ONLY - HIDDEN FROM STUDENTS)
-# ========================================================
-03 Model Training/*.py
-03 Model Training/*.ipynb
-03 Model Training/train_*
-03 Model Training/runs/
-03 Model Training/*.pt
-03 Model Training/*.onnx
-03 Model Training/*.zip
-03 Model Training/INSTRUCTOR*
-
-# Root Model Archive (Deployed weights live in "04 Laptop Inference/models/")
-Model/
