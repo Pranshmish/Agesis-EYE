@@ -3,7 +3,7 @@ cd /d "%~dp0"
 echo ========================================================
 echo   AGESIS EYE - LIVE ONNX BALLOON TRACKER (STAGE 04)
 echo ========================================================
-echo Model    : Model/agesis06.onnx (ONNX Runtime, 45+ FPS)
+echo Model     : 04 Laptop Inference/models/agesis06.onnx (ONNX, 45+ FPS)
 echo Resolution: 384x384
 echo.
 echo Controls:
@@ -19,5 +19,5 @@ if not exist "%PY_EXE%" (
     set "PY_EXE=python"
 )
 
-"%PY_EXE%" "04 Laptop Inference\live_balloon_tracker.py" --model "Model\agesis06.onnx" --conf 0.35 --imgsz 384
+"%PY_EXE%" "04 Laptop Inference\live_balloon_tracker.py" --model "04 Laptop Inference\models\agesis06.onnx" --conf 0.35 --imgsz 384
 pause

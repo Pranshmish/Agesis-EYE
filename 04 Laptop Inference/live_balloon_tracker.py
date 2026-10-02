@@ -285,11 +285,28 @@ class YOLOTrackerWorker:
 def main():
     parser = argparse.ArgumentParser(description="Agesis EYE Live Balloon Tracker (Zero Lag)")
     
-    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    pt_path = os.path.join(project_root, "Model", "best.pt")
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(script_dir)
+
+    # Search for model weights in order of preference (students: 04 Laptop Inference/models, root: Model)
+    default_candidates = [
+        os.path.join(script_dir, "models", "agesis06.onnx"),
+        os.path.join(script_dir, "models", "agesis06.pt"),
+        os.path.join(script_dir, "models", "best.onnx"),
+        os.path.join(script_dir, "models", "best.pt"),
+        os.path.join(project_root, "Model", "agesis06.onnx"),
+        os.path.join(project_root, "Model", "agesis06.pt"),
+        os.path.join(project_root, "Model", "best.pt"),
+    ]
+    default_model = next((p for p in default_candidates if os.path.exists(p)), default_candidates[0])
     
     # Read configured stream URL
-    cfg_path = os.path.join(project_root, "01 Camera Stream and Record", "camera_config.json")
+    cfg_candidates = [
+        os.path.join(project_root, "01 Camera Stream and Record", "camera_config.json"),
+        os.path.join(script_dir, "camera_config.json"),
+        os.path.join(os.getcwd(), "01 Camera Stream and Record", "camera_config.json")
+    ]
+    cfg_path = next((p for p in cfg_candidates if os.path.exists(p)), cfg_candidates[0])
     default_url = "http://10.96.117.1:81/stream"
     if os.path.exists(cfg_path):
         try:
@@ -299,10 +316,10 @@ def main():
         except Exception:
             pass
 
-    parser.add_argument("--model", type=str, default=pt_path, help="Path to best.pt")
+    parser.add_argument("--model", type=str, default=default_model, help="Path to best model (.onnx or .pt)")
     parser.add_argument("--source", type=str, default=default_url, help="Stream URL or 0 for webcam")
     parser.add_argument("--imgsz", type=int, default=384, help="Inference resolution (320, 384, or 480)")
-    parser.add_argument("--conf", type=float, default=0.40, help="Confidence threshold")
+    parser.add_argument("--conf", type=float, default=0.35, help="Confidence threshold")
     parser.add_argument("--iou", type=float, default=0.45, help="IoU NMS threshold")
     parser.add_argument("--lock-frames", type=int, default=3, help="Frames for target lock")
     parser.add_argument("--enhance", action="store_true", help="Enable EP-CLAHE domain transform")
