@@ -13,7 +13,8 @@ venv/
 ENV/
 .venv/
 build/
-dist/
+node_modules/
+!frontend/dist/
 develop-eggs/
 downloads/
 eggs/

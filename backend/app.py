@@ -9,17 +9,21 @@ import json
 import time
 import asyncio
 import cv2
+import numpy as np
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.responses import StreamingResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+# Resolve paths
+BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+if BACKEND_DIR not in sys.path:
+    sys.path.insert(0, BACKEND_DIR)
+
 from tracker import ZeroLagStreamReader, BalloonTracker, auto_discover_esp32_ip
 from turret import TurretController
 
-# Resolve paths
-BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(BACKEND_DIR)
 FRONTEND_DIR = os.path.join(PROJECT_ROOT, "frontend")
 CONFIG_PATH = os.path.join(BACKEND_DIR, "camera_config.json")
@@ -213,9 +217,11 @@ async def websocket_telemetry(ws: WebSocket):
 # Serve snapshots directory
 app.mount("/snapshots", StaticFiles(directory=SNAPSHOT_DIR), name="snapshots")
 
-# Serve frontend directory
-if os.path.exists(FRONTEND_DIR):
-    app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
+# Serve frontend directory (prioritize compiled React production build in dist/)
+FRONTEND_DIST = os.path.join(FRONTEND_DIR, "dist")
+static_dir = FRONTEND_DIST if os.path.exists(FRONTEND_DIST) else FRONTEND_DIR
+if os.path.exists(static_dir):
+    app.mount("/", StaticFiles(directory=static_dir, html=True), name="frontend")
 
 
 if __name__ == "__main__":
