@@ -324,10 +324,15 @@ body {
 
 @media (max-width: 960px) {
   .dashboard-grid.mode-feed,
-  .dashboard-grid.mode-twin,
   .dashboard-grid.mode-split {
     grid-template-columns: 1fr;
     height: auto;
+  }
+  .dashboard-grid.mode-twin {
+    grid-template-columns: 1fr;
+    height: calc(100vh - 65px);
+    min-height: 540px;
+    padding: 8px 12px 10px;
   }
 }
 
@@ -506,19 +511,54 @@ body {
 /* Floating Controls Bar over 3D Canvas */
 .dt-floating-controls {
   position: absolute;
-  bottom: 14px;
-  left: 14px;
-  right: 14px;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: flex-end;
   pointer-events: none;
   flex-wrap: wrap;
   z-index: 10;
+  transition: all 0.25s ease;
 }
 
 .dt-floating-controls > * {
   pointer-events: auto;
+}
+
+.dt-controls-toggle {
+  background: rgba(14, 6, 11, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 15, 60, 0.4);
+  border-radius: var(--radius-sm);
+  color: #ffffff;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 6px 12px;
+  cursor: pointer;
+  letter-spacing: 0.8px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.7);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.dt-controls-toggle:hover {
+  background: rgba(255, 15, 60, 0.25);
+  border-color: #ff0f3d;
+  box-shadow: 0 0 12px rgba(255, 15, 60, 0.5);
+}
+
+.dt-controls-card {
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.7);
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.dt-floating-controls.collapsed {
+  left: auto;
+  right: 12px;
+  bottom: 12px;
 }
 
 .dt-mode-selector {
@@ -677,164 +717,17 @@ body {
   box-shadow: 0 0 10px var(--blood-glow);
 }
 
-.dt-floating-controls > * {
-  pointer-events: auto;
-}
-
-.dt-mode-selector {
-  background: rgba(14, 6, 11, 0.92);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(0, 229, 255, 0.3);
-  border-radius: var(--radius-sm);
-  padding: 8px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
-}
-
-.dt-control-label {
-  font-family: var(--font-mono);
-  font-size: 0.6rem;
-  font-weight: 700;
-  color: #00e5ff;
-  letter-spacing: 0.5px;
-}
-
-.dt-btn-group {
-  display: flex;
-  gap: 5px;
-}
-
-.dt-btn {
-  background: rgba(22, 10, 16, 0.85);
-  border: 1px solid rgba(0, 229, 255, 0.25);
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  font-size: 0.62rem;
-  font-weight: 600;
-  padding: 5px 10px;
-  border-radius: 3px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.dt-btn:hover {
-  background: rgba(0, 229, 255, 0.15);
-  color: #fff;
-  border-color: #00e5ff;
-}
-
-.dt-btn.active {
-  background: rgba(0, 229, 255, 0.28);
-  border-color: #00e5ff;
-  color: #00e5ff;
-  font-weight: 700;
-  box-shadow: 0 0 10px rgba(0, 229, 255, 0.35);
-}
-
-/* Height Slider Card on Digital Twin */
-.dt-slider-card {
-  background: rgba(14, 6, 11, 0.92);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 102, 0, 0.3);
-  border-radius: var(--radius-sm);
-  padding: 8px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  min-width: 220px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
-}
-
-.dt-slider-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.dt-val-highlight {
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
-  font-weight: 800;
-  color: #ffaa33;
-}
-
-.dt-presets-mini {
-  display: flex;
-  gap: 4px;
-}
-
-.dt-chip {
-  padding: 2px 6px;
-  font-family: var(--font-mono);
-  font-size: 0.58rem;
-  background: rgba(22, 10, 16, 0.85);
-  border: 1px solid rgba(255, 102, 0, 0.25);
-  color: var(--text-muted);
-  border-radius: 3px;
-  cursor: pointer;
-}
-
-.dt-chip:hover {
-  background: rgba(255, 102, 0, 0.2);
-  color: #fff;
-}
-
-.dt-chip.active {
-  background: rgba(255, 102, 0, 0.35);
-  border-color: #ffaa33;
-  color: #ffaa33;
-  font-weight: 700;
-}
-
-/* Flight Controls Card */
-.dt-flight-controls {
-  background: rgba(14, 6, 11, 0.92);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 15, 60, 0.25);
-  border-radius: var(--radius-sm);
-  padding: 8px 12px;
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
-}
-
-.dt-param-item {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.dt-param-item label {
-  font-family: var(--font-mono);
-  font-size: 0.56rem;
-  color: var(--text-muted);
-}
-
-.dt-param-item input[type="range"] {
-  width: 90px;
-}
-
-.dt-btn-toggle {
-  background: rgba(255, 15, 60, 0.12);
-  border: 1px solid rgba(255, 15, 60, 0.35);
-  color: var(--blood-red);
-  font-family: var(--font-mono);
-  font-size: 0.62rem;
-  font-weight: 700;
-  padding: 6px 10px;
-  border-radius: 3px;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-
-.dt-btn-toggle.active {
-  background: rgba(255, 15, 60, 0.3);
-  border-color: var(--blood-red);
-  box-shadow: 0 0 10px var(--blood-glow);
+@media (max-width: 900px) {
+  .dt-floating-controls {
+    bottom: 8px;
+    left: 8px;
+    right: 8px;
+    gap: 6px;
+  }
+  .dt-mode-selector, .dt-slider-card, .dt-flight-controls {
+    padding: 6px 10px;
+    min-width: unset;
+  }
 }
 
 /* ========================================================
