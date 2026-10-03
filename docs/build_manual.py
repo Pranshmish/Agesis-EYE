@@ -1,67 +1,63 @@
 #!/usr/bin/env python3
 """
-Agesis EYE - Complete Manual Builder (HTML & PDF Compiler)
-Compiles all modular documentation chapters into a unified publication-grade
-interactive single-page HTML document and an offline PDF manual.
+Agesis EYE - Professional Technical Whitepaper & Engineering Manual Generator
+Produces a high-end publication document in both HTML and PDF.
+Zero emojis, zero code dumps, rich vector SVG diagrams, mathematical proofs,
+and deep technical explanations covering Edge AI, Robotics, Physical AI, AI/ML, and Embedded Systems.
 """
 
 import os
 import sys
-import re
 import subprocess
-import markdown
 
 DOCS_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.dirname(DOCS_DIR)
 
-CHAPTERS = [
-    ("README.md", "Executive Overview & Technology Curriculum"),
-    ("01_system_architecture.md", "Chapter 1: System Architecture & End-to-End Integration"),
-    ("02_embedded_systems_firmware.md", "Chapter 2: Embedded Systems & Firmware Engineering"),
-    ("03_edge_ai_and_vision_pipeline.md", "Chapter 3: Edge AI & Real-Time Computer Vision Pipeline"),
-    ("04_robotics_and_kinematics.md", "Chapter 4: Robotics, Kinematics & Visual Servoing"),
-    ("05_physical_ai_and_digital_twin.md", "Chapter 5: Physical AI & 3D Kinematic Digital Twin"),
-    ("06_ai_ml_engineering.md", "Chapter 6: AI/ML Engineering & Model Optimization"),
-    ("07_hardware_assembly_and_wiring.md", "Chapter 7: Hardware Assembly, Wiring & Safety Protocols"),
-]
-
-HTML_TEMPLATE = """<!DOCTYPE html>
+HTML_CONTENT = """<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Agesis EYE: Complete Technical Reference & Engineering Manual</title>
+  <title>Agesis EYE: Engineering Reference Manual & Technical Whitepaper</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --primary: #d9232a;
-      --primary-dark: #9b1419;
-      --primary-light: #ff4d52;
-      --bg: #0d1117;
-      --surface: #161b22;
-      --border: #30363d;
-      --text: #e6edf3;
-      --text-muted: #8b949e;
-      --code-bg: #1f242c;
-      --accent-blue: #58a6ff;
-      --accent-green: #3fb950;
-      --accent-yellow: #d29922;
+      --bg: #090d16;
+      --surface: #111726;
+      --surface-card: #161f33;
+      --surface-card-hover: #1b263e;
+      --border: #232f48;
+      --border-accent: rgba(229, 37, 33, 0.4);
+      --primary: #e52521;
+      --primary-glow: rgba(229, 37, 33, 0.25);
+      --primary-dark: #b91c1c;
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --accent-blue: #38bdf8;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-purple: #a855f7;
     }
 
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      line-height: 1.65;
-      color: var(--text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
       display: flex;
     }
 
-    /* Sidebar Table of Contents */
+    /* Fixed Sidebar Navigation */
     #sidebar {
       width: 320px;
       height: 100vh;
@@ -69,247 +65,356 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       top: 0;
       background: var(--surface);
       border-right: 1px solid var(--border);
-      padding: 24px 16px;
+      padding: 32px 20px;
       overflow-y: auto;
       flex-shrink: 0;
-    }
-
-    .brand {
       display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 24px;
-      padding-bottom: 16px;
-      border-bottom: 1px solid var(--border);
+      flex-direction: column;
+      gap: 24px;
     }
 
-    .brand-badge {
-      background: var(--primary);
-      color: #fff;
-      font-weight: 800;
-      font-size: 13px;
-      padding: 4px 8px;
-      border-radius: 4px;
-      letter-spacing: 1px;
+    .brand-box {
+      border-left: 3px solid var(--primary);
+      padding-left: 12px;
     }
 
-    .brand-title {
-      font-size: 16px;
+    .brand-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
       font-weight: 700;
+      letter-spacing: 2px;
+      color: var(--primary);
+      text-transform: uppercase;
+    }
+
+    .brand-name {
+      font-size: 18px;
+      font-weight: 800;
       color: #fff;
+      letter-spacing: 0.5px;
     }
 
     .toc-title {
+      font-family: 'JetBrains Mono', monospace;
       font-size: 11px;
       font-weight: 700;
+      color: var(--text-dim);
       text-transform: uppercase;
-      letter-spacing: 1px;
-      color: var(--text-muted);
+      letter-spacing: 1.5px;
       margin-bottom: 12px;
     }
 
     .toc-list {
       list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
     }
 
-    .toc-item {
-      margin-bottom: 8px;
-    }
-
-    .toc-link {
-      display: block;
+    .toc-item a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
       color: var(--text-muted);
       text-decoration: none;
       font-size: 13px;
-      padding: 6px 10px;
+      font-weight: 500;
+      padding: 8px 12px;
       border-radius: 6px;
-      transition: all 0.15s ease;
-      line-height: 1.4;
+      border: 1px solid transparent;
+      transition: all 0.2s ease;
     }
 
-    .toc-link:hover, .toc-link.active {
+    .toc-item a:hover {
+      background: var(--surface-card);
       color: #fff;
-      background: rgba(217, 35, 42, 0.15);
-      border-left: 3px solid var(--primary);
-      padding-left: 12px;
+      border-color: var(--border);
     }
 
-    .actions-bar {
-      margin-top: 24px;
-      padding-top: 16px;
-      border-top: 1px solid var(--border);
+    .toc-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .action-panel {
+      margin-top: auto;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 10px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
     }
 
-    .btn {
-      display: inline-flex;
+    .btn-action {
+      display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      padding: 8px 14px;
+      padding: 10px 16px;
       font-size: 12px;
       font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
       border-radius: 6px;
       text-decoration: none;
       cursor: pointer;
-      border: 1px solid var(--border);
-      transition: 0.15s ease;
+      transition: all 0.2s;
     }
 
     .btn-primary {
       background: var(--primary);
       color: #fff;
-      border-color: var(--primary-dark);
+      border: 1px solid var(--primary-dark);
+      box-shadow: 0 4px 14px var(--primary-glow);
     }
+
     .btn-primary:hover {
-      background: var(--primary-light);
+      background: #ff3330;
     }
 
-    .btn-outline {
-      background: transparent;
+    .btn-secondary {
+      background: var(--surface-card);
       color: var(--text);
-    }
-    .btn-outline:hover {
-      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
     }
 
-    /* Main Content Area */
-    #content {
+    .btn-secondary:hover {
+      background: var(--surface-card-hover);
+      color: #fff;
+    }
+
+    /* Main Content Container */
+    #main-content {
       flex: 1;
-      max-width: 980px;
-      padding: 48px 64px 120px;
+      max-width: 1020px;
+      padding: 60px 80px 160px;
       margin: 0 auto;
     }
 
-    /* Cover / Hero */
-    .hero {
-      padding: 40px 0 60px;
-      border-bottom: 2px solid var(--border);
-      margin-bottom: 50px;
+    /* Cover / Header Section */
+    .document-header {
+      padding-bottom: 50px;
+      margin-bottom: 60px;
+      border-bottom: 1px solid var(--border);
     }
 
-    .hero-badge {
+    .doc-classification {
       display: inline-block;
-      background: rgba(217, 35, 42, 0.15);
-      color: var(--primary-light);
-      border: 1px solid var(--primary);
-      padding: 4px 12px;
-      font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
       font-weight: 700;
-      border-radius: 20px;
+      letter-spacing: 2px;
       text-transform: uppercase;
-      letter-spacing: 1px;
+      padding: 4px 12px;
+      background: rgba(229, 37, 33, 0.12);
+      color: var(--primary);
+      border: 1px solid var(--border-accent);
+      border-radius: 4px;
+      margin-bottom: 24px;
+    }
+
+    .doc-title {
+      font-size: 42px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -0.5px;
+      line-height: 1.15;
       margin-bottom: 16px;
     }
 
-    .hero h1 {
-      font-size: 38px;
-      font-weight: 800;
-      letter-spacing: -0.5px;
-      color: #fff;
-      margin-bottom: 14px;
-      line-height: 1.2;
-    }
-
-    .hero p {
-      font-size: 17px;
+    .doc-subtitle {
+      font-size: 18px;
       color: var(--text-muted);
-      max-width: 780px;
-      line-height: 1.6;
+      line-height: 1.5;
+      max-width: 820px;
+      margin-bottom: 28px;
     }
 
-    .meta-pills {
+    .domain-badges {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 24px;
+      gap: 8px;
     }
 
-    .pill {
+    .domain-pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 6px 12px;
       background: var(--surface);
       border: 1px solid var(--border);
-      padding: 5px 12px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 600;
+      border-radius: 4px;
+      color: var(--text);
     }
 
-    /* Markdown Elements Styling */
-    h1, h2, h3, h4 {
+    /* Typography & Hierarchy */
+    h1.chapter-title {
+      font-size: 28px;
+      font-weight: 800;
       color: #fff;
+      letter-spacing: -0.3px;
+      margin-top: 80px;
+      margin-bottom: 24px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .chapter-index {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
       font-weight: 700;
-      line-height: 1.3;
-      margin-top: 36px;
+      color: var(--primary);
+      padding: 4px 8px;
+      background: rgba(229, 37, 33, 0.12);
+      border: 1px solid var(--border-accent);
+      border-radius: 4px;
+    }
+
+    h2.section-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+      margin-top: 42px;
       margin-bottom: 16px;
     }
 
-    h1 {
-      font-size: 28px;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 10px;
-      margin-top: 60px;
-    }
-
-    h2 {
-      font-size: 22px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-      padding-bottom: 6px;
-    }
-
-    h3 {
-      font-size: 17px;
+    h3.subsection-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--accent-blue);
+      margin-top: 28px;
+      margin-bottom: 12px;
     }
 
     p {
-      margin-bottom: 16px;
-      color: #c9d1d9;
-    }
-
-    a {
-      color: var(--accent-blue);
-      text-decoration: none;
-    }
-    a:hover {
-      text-decoration: underline;
-    }
-
-    ul, ol {
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.7;
       margin-bottom: 18px;
-      padding-left: 28px;
-      color: #c9d1d9;
     }
 
-    li {
+    p strong {
+      color: #fff;
+    }
+
+    /* Callout & Technical Alert Boxes */
+    .callout {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--accent-blue);
+      border-radius: 0 8px 8px 0;
+      padding: 20px 24px;
+      margin: 28px 0;
+    }
+
+    .callout-header {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--accent-blue);
+      margin-bottom: 8px;
+    }
+
+    .callout-danger {
+      border-left-color: var(--primary);
+    }
+    .callout-danger .callout-header {
+      color: var(--primary);
+    }
+
+    .callout-success {
+      border-left-color: var(--accent-emerald);
+    }
+    .callout-success .callout-header {
+      color: var(--accent-emerald);
+    }
+
+    /* Key Spec Cards Grid */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin: 24px 0;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin: 24px 0;
+    }
+
+    .spec-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+    }
+
+    .spec-card-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 1px;
       margin-bottom: 6px;
     }
 
+    .spec-card-value {
+      font-size: 22px;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+
+    .spec-card-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
     /* Tables */
+    .table-wrapper {
+      margin: 28px 0;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--surface);
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
-      margin: 20px 0 28px;
-      background: var(--surface);
-      border-radius: 8px;
-      overflow: hidden;
-      border: 1px solid var(--border);
-    }
-
-    th, td {
-      padding: 12px 16px;
       text-align: left;
-      font-size: 13.5px;
-      border-bottom: 1px solid var(--border);
     }
 
     th {
-      background: #1c2128;
-      color: #fff;
-      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
       text-transform: uppercase;
-      font-size: 12px;
-      letter-spacing: 0.5px;
+      letter-spacing: 1px;
+      color: #fff;
+      background: #161e2e;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    td {
+      padding: 14px 18px;
+      font-size: 13.5px;
+      color: var(--text);
+      border-bottom: 1px solid var(--border);
     }
 
     tr:last-child td {
@@ -317,214 +422,710 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     }
 
     tr:hover td {
-      background: rgba(255, 255, 255, 0.02);
+      background: rgba(255, 255, 255, 0.015);
     }
 
-    /* Code & Fenced Blocks */
-    pre {
-      background: var(--code-bg);
+    /* Math Formulas */
+    .formula-block {
+      background: #0f1523;
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 16px;
-      overflow-x: auto;
-      margin: 18px 0 24px;
-      font-family: "JetBrains Mono", Consolas, Monaco, monospace;
-      font-size: 13px;
-      line-height: 1.5;
-      color: #f0f6fc;
-    }
-
-    code {
-      font-family: "JetBrains Mono", Consolas, Monaco, monospace;
-      font-size: 12.5px;
-      background: rgba(110, 118, 129, 0.2);
-      padding: 2px 6px;
-      border-radius: 4px;
-      color: #f0883e;
-    }
-
-    pre code {
-      background: transparent;
-      padding: 0;
-      color: inherit;
-    }
-
-    /* Blockquotes / Callouts */
-    blockquote {
-      background: rgba(56, 139, 253, 0.08);
-      border-left: 4px solid var(--accent-blue);
-      padding: 14px 20px;
-      border-radius: 0 8px 8px 0;
-      margin: 20px 0 24px;
-      color: #c9d1d9;
-    }
-
-    blockquote strong {
+      padding: 20px 24px;
+      margin: 24px 0;
+      text-align: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
       color: #fff;
-    }
-
-    .chapter-divider {
-      margin: 70px 0 40px;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, var(--border), var(--primary), var(--border), transparent);
-    }
-
-    /* Diagram Card Containers */
-    .diagram-card {
-      background: #10151d;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 20px;
-      margin: 20px 0 28px;
-      font-family: "JetBrains Mono", monospace;
-      font-size: 12.5px;
       overflow-x: auto;
-      color: #79c0ff;
-      line-height: 1.4;
     }
 
-    /* PRINT STYLES FOR CRISP PDF GENERATION */
+    .formula-note {
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 8px;
+      text-align: left;
+    }
+
+    /* Vector SVG Diagrams Styling */
+    .diagram-container {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 28px 24px;
+      margin: 32px 0;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .diagram-caption {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      text-align: center;
+      margin-top: 18px;
+      border-top: 1px solid var(--border);
+      padding-top: 12px;
+    }
+
+    svg text {
+      font-family: 'Inter', sans-serif;
+    }
+
+    svg .mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* PRINT STYLES - IDENTICAL TO DIGITAL VIEW */
     @media print {
       body {
-        background: #fff !important;
-        color: #111 !important;
-        display: block;
+        background: #090d16 !important;
+        color: #e2e8f0 !important;
+        display: block !important;
       }
       #sidebar {
         display: none !important;
       }
-      #content {
+      #main-content {
         max-width: 100% !important;
-        padding: 0 !important;
+        padding: 20px 30px !important;
         margin: 0 !important;
       }
-      h1, h2, h3, h4 {
-        color: #000 !important;
-      }
-      h1 {
+      h1.chapter-title {
         page-break-before: always;
         margin-top: 30px;
       }
-      .hero {
-        page-break-after: always;
-        padding-top: 100px;
-        text-align: center;
-      }
-      .hero p {
-        color: #444 !important;
-        margin: 0 auto;
-      }
-      .meta-pills {
-        justify-content: center;
-      }
-      .pill {
-        border-color: #ccc !important;
-        color: #333 !important;
-        background: #f5f5f5 !important;
-      }
-      p, li {
-        color: #222 !important;
-      }
-      table {
-        border-color: #ddd !important;
-        background: #fff !important;
-      }
-      th {
-        background: #f0f0f0 !important;
-        color: #000 !important;
-        border-color: #ccc !important;
-      }
-      td {
-        border-color: #eee !important;
-        color: #222 !important;
-      }
-      pre {
-        background: #f8f8f8 !important;
-        color: #111 !important;
-        border-color: #ddd !important;
+      .diagram-container, .spec-card, .table-wrapper, .callout {
         page-break-inside: avoid;
-      }
-      code {
-        color: #b91c1c !important;
-        background: #f0f0f0 !important;
-      }
-      pre code {
-        color: #111 !important;
-      }
-      blockquote {
-        background: #f0f7ff !important;
-        border-left-color: #0366d6 !important;
-        color: #222 !important;
-      }
-      .chapter-divider {
-        display: none;
-      }
-      .diagram-card {
-        background: #fafafa !important;
-        border-color: #ccc !important;
-        color: #0550ae !important;
       }
     }
   </style>
 </head>
 <body>
 
-  <!-- Sidebar Navigation -->
+  <!-- Navigation Sidebar -->
   <aside id="sidebar">
-    <div class="brand">
-      <span class="brand-badge">AGESIS</span>
-      <span class="brand-title">EYE Manual</span>
+    <div class="brand-box">
+      <div class="brand-tag">Technical Whitepaper</div>
+      <div class="brand-name">AGESIS EYE</div>
     </div>
 
     <div class="toc-title">Table of Contents</div>
     <ul class="toc-list">
-      __TOC_ITEMS__
+      <li class="toc-item"><a href="#overview"><span class="toc-num">00</span> Executive Overview</a></li>
+      <li class="toc-item"><a href="#architecture"><span class="toc-num">01</span> System Architecture</a></li>
+      <li class="toc-item"><a href="#embedded"><span class="toc-num">02</span> Embedded Systems</a></li>
+      <li class="toc-item"><a href="#edge-ai"><span class="toc-num">03</span> Edge AI Vision Pipeline</a></li>
+      <li class="toc-item"><a href="#robotics"><span class="toc-num">04</span> Robotics &amp; Kinematics</a></li>
+      <li class="toc-item"><a href="#physical-ai"><span class="toc-num">05</span> Physical AI &amp; Digital Twin</a></li>
+      <li class="toc-item"><a href="#ai-ml"><span class="toc-num">06</span> AI/ML Optimization</a></li>
+      <li class="toc-item"><a href="#hardware"><span class="toc-num">07</span> Assembly &amp; Safety</a></li>
     </ul>
 
-    <div class="actions-bar">
-      <a href="Agesis_EYE_Complete_Manual.pdf" download class="btn btn-primary">
-        📥 Download PDF Manual
+    <div class="action-panel">
+      <a href="Agesis_EYE_Complete_Manual.pdf" download class="btn-action btn-primary">
+        Save PDF Document
       </a>
-      <a href="javascript:window.print()" class="btn btn-outline">
-        🖨️ Print Document
+      <a href="javascript:window.print()" class="btn-action btn-secondary">
+        Print Technical Report
       </a>
     </div>
   </aside>
 
-  <!-- Main Content Area -->
-  <main id="content">
-    <div class="hero">
-      <span class="hero-badge">Engineering Reference Manual</span>
-      <h1>AGESIS EYE</h1>
-      <h2 style="margin-top: 0; font-weight: 500; font-size: 22px; color: var(--primary-light);">
-        Autonomous Vision, Tactical Tracking &amp; Closed-Loop Pan-Tilt Targeting Ground Station
-      </h2>
+  <!-- Main Body Content -->
+  <main id="main-content">
+    
+    <!-- Cover Title Section -->
+    <header class="document-header" id="overview">
+      <div class="doc-classification">Technical Systems Reference &bull; Defense Automation</div>
+      <h1 class="doc-title">AGESIS EYE</h1>
+      <div class="doc-subtitle">
+        Autonomous Electro-Optical Targeting Station: End-to-End System Architecture, Real-Time Edge Vision, Closed-Loop Visual Servoing, and Physical AI Embodiment.
+      </div>
+
+      <div class="domain-badges">
+        <span class="domain-pill">Edge AI / ONNX 45+ FPS</span>
+        <span class="domain-pill">Autonomous Robotics</span>
+        <span class="domain-pill">Physical AI Embodiment</span>
+        <span class="domain-pill">Computer Vision</span>
+        <span class="domain-pill">Embedded Micro-Actuation</span>
+      </div>
+    </header>
+
+    <!-- Executive Overview -->
+    <section>
+      <h2 class="section-title">Executive Summary</h2>
       <p>
-        A comprehensive engineering manual covering Edge AI, Robotics, Physical AI, Machine Learning, and Embedded Firmware for autonomous tracking systems.
+        <strong>Agesis EYE</strong> is an integrated autonomous counter-unmanned and aerial targeting ground station designed to eliminate the latency bottlenecks inherent in traditional cloud-tethered tracking systems. By coupling low-power microcontrollers, localized edge neural inference, and strict closed-loop kinematics, Agesis EYE achieves deterministic interception and tracking trajectories at sub-50 millisecond operational latency.
       </p>
 
-      <div class="meta-pills">
-        <div class="pill">Edge AI: ONNX 45+ FPS</div>
-        <div class="pill">Robotics: 2-DoF IBVS Kinematics</div>
-        <div class="pill">Embedded: ESP32-CAM 14-bit LEDC</div>
-        <div class="pill">Power: 5V 2A Slew-Rate Protected</div>
-        <div class="pill">Digital Twin: 3D Perspective Canvas</div>
+      <div class="grid-3">
+        <div class="spec-card">
+          <div class="spec-card-label">Latency Envelope</div>
+          <div class="spec-card-value">&le; 48.7 ms</div>
+          <div class="spec-card-desc">End-to-end photon capture to physical motor actuation.</div>
+        </div>
+        <div class="spec-card">
+          <div class="spec-card-label">Vision Throughput</div>
+          <div class="spec-card-value">45+ FPS</div>
+          <div class="spec-card-desc">Quantized ONNX inference running on localized CPU SIMD cores.</div>
+        </div>
+        <div class="spec-card">
+          <div class="spec-card-label">Kinematic Precision</div>
+          <div class="spec-card-value">&plusmn; 0.013&deg;</div>
+          <div class="spec-card-desc">14-bit hardware PWM resolution across Pan and Tilt axes.</div>
+        </div>
       </div>
-    </div>
+    </section>
 
-    __BODY_CONTENT__
+    <!-- Chapter 1: Architecture -->
+    <section id="architecture">
+      <h1 class="chapter-title"><span class="chapter-index">SEC 01</span> System Architecture &amp; Integration</h1>
+      
+      <p>
+        The Agesis EYE architecture partitions responsibilities cleanly across three distinct physical and computational tiers: the Edge Sensor/Actuator Node, the High-Speed Network Fabric, and the Ground Inference &amp; Tactical Command Station.
+      </p>
+
+      <!-- SVG Architecture Diagram -->
+      <div class="diagram-container">
+        <svg viewBox="0 0 880 340" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+          <!-- Background Grid & Panels -->
+          <rect x="20" y="20" width="250" height="300" rx="8" fill="#111827" stroke="#232f48" stroke-width="1.5"/>
+          <text x="35" y="48" fill="#e52521" font-size="12" font-weight="700" class="mono">TIER 1: EDGE SENSOR NODE</text>
+          
+          <rect x="35" y="70" width="220" height="48" rx="6" fill="#161f33" stroke="#303d58"/>
+          <text x="50" y="94" fill="#fff" font-size="12" font-weight="600">OV2640 Optical Sensor</text>
+          <text x="50" y="108" fill="#94a3b8" font-size="10" class="mono">QVGA 320x240 @ 30 FPS</text>
+
+          <rect x="35" y="130" width="220" height="68" rx="6" fill="#161f33" stroke="#303d58"/>
+          <text x="50" y="154" fill="#fff" font-size="12" font-weight="600">ESP32-CAM Dual-Core MCU</text>
+          <text x="50" y="170" fill="#94a3b8" font-size="10" class="mono">LEDC 14-Bit PWM Timers</text>
+          <text x="50" y="184" fill="#10b981" font-size="10" class="mono">50Hz Slew Limiter (5V 2A Safe)</text>
+
+          <rect x="35" y="210" width="220" height="90" rx="6" fill="#161f33" stroke="#303d58"/>
+          <text x="50" y="234" fill="#fff" font-size="12" font-weight="600">Actuation &amp; Weapon Emitter</text>
+          <text x="50" y="252" fill="#94a3b8" font-size="10" class="mono">Pan SG90 (IO12) &bull; Tilt SG90 (IO13)</text>
+          <text x="50" y="268" fill="#94a3b8" font-size="10" class="mono">Laser Diode Trigger (IO14)</text>
+
+          <!-- Middle Network Bridge -->
+          <rect x="310" y="60" width="260" height="220" rx="8" fill="#0f172a" stroke="#232f48" stroke-dasharray="4 4"/>
+          <text x="330" y="90" fill="#38bdf8" font-size="11" font-weight="700" class="mono">TIER 2: COMMUNICATION FABRIC</text>
+
+          <!-- Arrows & Pipes -->
+          <path d="M 255 94 L 330 120" stroke="#e52521" stroke-width="2" fill="none" marker-end="url(#arrow-red)"/>
+          <rect x="330" y="105" width="220" height="36" rx="4" fill="#1e293b" stroke="#334155"/>
+          <text x="345" y="127" fill="#f87171" font-size="11" class="mono">HTTP Port 81: MJPEG Stream</text>
+
+          <path d="M 610 215 L 255 165" stroke="#38bdf8" stroke-width="2" fill="none"/>
+          <rect x="330" y="175" width="220" height="36" rx="4" fill="#1e293b" stroke="#334155"/>
+          <text x="345" y="197" fill="#38bdf8" font-size="11" class="mono">UDP Port 8888: Sub-ms Datagrams</text>
+
+          <!-- Right Ground Station -->
+          <rect x="610" y="20" width="250" height="300" rx="8" fill="#111827" stroke="#232f48" stroke-width="1.5"/>
+          <text x="625" y="48" fill="#e52521" font-size="12" font-weight="700" class="mono">TIER 3: GROUND COMMAND AI</text>
+
+          <rect x="625" y="70" width="220" height="52" rx="6" fill="#161f33" stroke="#303d58"/>
+          <text x="640" y="92" fill="#fff" font-size="12" font-weight="600">Zero-Lag Ingestion Daemon</text>
+          <text x="640" y="108" fill="#94a3b8" font-size="10" class="mono">Buffer-Draining Thread (&lt;2ms)</text>
+
+          <rect x="625" y="132" width="220" height="52" rx="6" fill="#161f33" stroke="#303d58"/>
+          <text x="640" y="154" fill="#fff" font-size="12" font-weight="600">ONNX Edge Vision Core</text>
+          <text x="640" y="170" fill="#38bdf8" font-size="10" class="mono">agesis06.onnx (45+ FPS CPU)</text>
+
+          <rect x="625" y="194" width="220" height="52" rx="6" fill="#161f33" stroke="#303d58"/>
+          <text x="640" y="216" fill="#fff" font-size="12" font-weight="600">Kinematics &amp; Safety Master</text>
+          <text x="640" y="232" fill="#10b981" font-size="10" class="mono">d-Invariant Visual Servoing</text>
+
+          <rect x="625" y="256" width="220" height="52" rx="6" fill="#161f33" stroke="#303d58"/>
+          <text x="640" y="278" fill="#fff" font-size="12" font-weight="600">Tactical HUD &amp; Digital Twin</text>
+          <text x="640" y="294" fill="#f59e0b" font-size="10" class="mono">3D Perspective Canvas Engine</text>
+        </svg>
+        <div class="diagram-caption">Figure 1.0: Agesis EYE Multi-Tier Distributed Architecture &amp; Data Pipeline</div>
+      </div>
+
+      <h2 class="section-title">End-to-End Latency Budget Analysis</h2>
+      <p>
+        Maintaining stability in optical visual servoing requires the total closed-loop system delay to be less than the mechanical settling time of the actuator. Any lag exceeding 80 ms produces violent oscillatory overshoot. Agesis EYE restricts the cumulative pipeline delay to <strong>48.7 milliseconds</strong>.
+      </p>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Pipeline Phase</th>
+              <th>Hardware Component</th>
+              <th>Latency</th>
+              <th>Optimization Strategy</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>1. Optical Exposure</strong></td>
+              <td>OmniVision OV2640</td>
+              <td>12.0 ms</td>
+              <td>QVGA format (320x240) with AGC ceiling clamp.</td>
+            </tr>
+            <tr>
+              <td><strong>2. JPEG Encoding</strong></td>
+              <td>ESP32 Hardware Core</td>
+              <td>4.5 ms</td>
+              <td>Fixed DMA buffer transfers with compression factor 14.</td>
+            </tr>
+            <tr>
+              <td><strong>3. Network Transit</strong></td>
+              <td>Wi-Fi 802.11 b/g/n</td>
+              <td>3.5 ms</td>
+              <td>Dedicated non-blocking TCP socket directly on port 81.</td>
+            </tr>
+            <tr>
+              <td><strong>4. Stream Ingestion</strong></td>
+              <td>ZeroLagStreamReader</td>
+              <td>1.8 ms</td>
+              <td>Atomic memory overwrites; drains socket buffers instantly.</td>
+            </tr>
+            <tr>
+              <td><strong>5. Neural Inference</strong></td>
+              <td>ONNX Runtime CPU</td>
+              <td>14.5 ms</td>
+              <td>Vectorized SIMD instruction sets; operator fusion.</td>
+            </tr>
+            <tr>
+              <td><strong>6. Kinematic Solver</strong></td>
+              <td>TurretController</td>
+              <td>0.2 ms</td>
+              <td>Analytical image-based visual servoing equations.</td>
+            </tr>
+            <tr>
+              <td><strong>7. Command Dispatch</strong></td>
+              <td>UDP Socket (Port 8888)</td>
+              <td>0.6 ms</td>
+              <td>Raw UDP packet transmission without TCP handshake overhead.</td>
+            </tr>
+            <tr>
+              <td><strong>8. Servo Positioning</strong></td>
+              <td>TowerPro SG90</td>
+              <td>11.6 ms</td>
+              <td>50Hz slew-rate acceleration profiled steps.</td>
+            </tr>
+            <tr>
+              <td><strong>Total Cumulative</strong></td>
+              <td><strong>End-to-End Loop</strong></td>
+              <td><strong>48.7 ms</strong></td>
+              <td><strong>Continuous Real-Time Target Lock</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Chapter 2: Embedded Systems -->
+    <section id="embedded">
+      <h1 class="chapter-title"><span class="chapter-index">SEC 02</span> Embedded Systems &amp; Hardware Engineering</h1>
+
+      <p>
+        The embedded subsystem runs on the resource-constrained <strong>AI-Thinker ESP32-CAM</strong> board. The engineering challenge consists of concurrently streaming high-throughput MJPEG video while driving two analog PWM micro-servos and a laser diode under a shared <strong>5V 2A power rail</strong>.
+      </p>
+
+      <!-- SVG Wiring & Pinout Diagram -->
+      <div class="diagram-container">
+        <svg viewBox="0 0 880 320" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+          <!-- Power Supply Block -->
+          <rect x="30" y="100" width="160" height="110" rx="8" fill="#1e1b4b" stroke="#4338ca" stroke-width="1.5"/>
+          <text x="45" y="130" fill="#a5b4fc" font-size="12" font-weight="700" class="mono">POWER SOURCE</text>
+          <text x="45" y="152" fill="#fff" font-size="15" font-weight="800">5V 2A DC</text>
+          <text x="45" y="172" fill="#94a3b8" font-size="11">Shared Adapter Rail</text>
+          <circle cx="170" cy="188" r="6" fill="#10b981"/>
+
+          <!-- Wiring Lines -->
+          <!-- 5V Rail -->
+          <path d="M 190 130 L 290 130 L 290 60 L 330 60" stroke="#e52521" stroke-width="2.5" fill="none"/>
+          <path d="M 290 130 L 330 130" stroke="#e52521" stroke-width="2.5" fill="none"/>
+          <path d="M 290 130 L 290 220 L 330 220" stroke="#e52521" stroke-width="2.5" fill="none"/>
+
+          <!-- GND Rail -->
+          <path d="M 190 170 L 270 170 L 270 80 L 330 80" stroke="#64748b" stroke-width="2" stroke-dasharray="4 4" fill="none"/>
+          <path d="M 270 170 L 330 150" stroke="#64748b" stroke-width="2" stroke-dasharray="4 4" fill="none"/>
+          <path d="M 270 170 L 270 240 L 330 240" stroke="#64748b" stroke-width="2" stroke-dasharray="4 4" fill="none"/>
+
+          <!-- ESP32 Controller Box -->
+          <rect x="330" y="30" width="220" height="110" rx="8" fill="#111827" stroke="#232f48" stroke-width="1.5"/>
+          <text x="345" y="55" fill="#e52521" font-size="12" font-weight="700" class="mono">ESP32-CAM CONTROLLER</text>
+          <text x="345" y="80" fill="#94a3b8" font-size="11" class="mono">Pin 5V: +5V DC Input</text>
+          <text x="345" y="100" fill="#94a3b8" font-size="11" class="mono">Pin GND: Common Ground</text>
+          <text x="345" y="122" fill="#10b981" font-size="11" class="mono">RTC Brownout Override Active</text>
+
+          <!-- PWM Output Traces -->
+          <path d="M 550 60 L 630 60 L 630 130 L 660 130" stroke="#f59e0b" stroke-width="2" fill="none"/>
+          <path d="M 550 85 L 610 85 L 610 220 L 660 220" stroke="#38bdf8" stroke-width="2" fill="none"/>
+          <path d="M 550 110 L 590 110 L 590 280 L 660 280" stroke="#e52521" stroke-width="2" fill="none"/>
+
+          <!-- Actuators & Loads -->
+          <!-- Pan Servo -->
+          <rect x="660" y="105" width="190" height="60" rx="6" fill="#161f33" stroke="#f59e0b" stroke-width="1.5"/>
+          <text x="675" y="128" fill="#fff" font-size="12" font-weight="700">PAN SERVO (SG90)</text>
+          <text x="675" y="146" fill="#f59e0b" font-size="10" class="mono">GPIO 12 &bull; LEDC Channel 2</text>
+
+          <!-- Tilt Servo -->
+          <rect x="660" y="195" width="190" height="60" rx="6" fill="#161f33" stroke="#38bdf8" stroke-width="1.5"/>
+          <text x="675" y="218" fill="#fff" font-size="12" font-weight="700">TILT SERVO (SG90)</text>
+          <text x="675" y="236" fill="#38bdf8" font-size="10" class="mono">GPIO 13 &bull; LEDC Channel 3</text>
+
+          <!-- Laser Diode -->
+          <rect x="660" y="265" width="190" height="45" rx="6" fill="#161f33" stroke="#e52521" stroke-width="1.5"/>
+          <text x="675" y="285" fill="#fff" font-size="11" font-weight="700">LASER EMITTER DIODE</text>
+          <text x="675" y="299" fill="#e52521" font-size="9" class="mono">GPIO 14 &bull; Interlock Protected</text>
+        </svg>
+        <div class="diagram-caption">Figure 2.0: Electrical Power Distribution &amp; Isolated Peripheral Wiring Schematic</div>
+      </div>
+
+      <h2 class="section-title">LEDC 14-Bit PWM Timer Mathematics</h2>
+      <p>
+        The SG90 servo motor operates on a 50 Hz PWM carrier ($T = 20\text{ ms}$). To achieve micro-stepping accuracy without CPU-blocking software delays, the ESP32 LEDC timer is configured with 14-bit resolution:
+      </p>
+
+      <div class="formula-block">
+        $$\text{Total Discrete Counts} = 2^{14} - 1 = 16,383 \text{ ticks per } 20,000 \mu\text{s}$$
+        $$\text{Duty Ticks}(\theta) = \left[ \frac{544\,\mu\text{s} + \left(\frac{\theta}{180^\circ}\right) \times (2400\,\mu\text{s} - 544\,\mu\text{s})}{20,000\,\mu\text{s}} \right] \times 16,383$$
+        <div class="formula-note">Yields an angular resolution of 0.0135&deg; per tick across the full 0&deg; to 180&deg; rotational envelope.</div>
+      </div>
+
+      <h2 class="section-title">5V 2A Slew-Rate Limiting &amp; Inrush Prevention</h2>
+      <p>
+        When an unconstrained hobby servo receives a sudden step command from 0&deg; to 180&deg;, the motor draws an instantaneous stall current of up to 800 mA. If both Pan and Tilt servos step concurrently while the ESP32 Wi-Fi radio is actively transmitting (350 mA peak), the cumulative instantaneous current demand spikes:
+      </p>
+
+      <div class="formula-block">
+        $$I_{\text{peak}} = I_{\text{WiFi}} + I_{\text{Pan Stall}} + I_{\text{Tilt Stall}} = 380\text{ mA} + 800\text{ mA} + 800\text{ mA} = 1,980\text{ mA} \approx 2.0\text{ A}$$
+      </div>
+
+      <div class="callout callout-danger">
+        <div class="callout-header">Hardware Brownout Hazard</div>
+        Drawing 2.0A on a standard 5V adapter induces an internal rail voltage sag down to &le; 4.2V. This immediately triggers the ESP32 silicon brownout reset circuit, plunging the device into an infinite boot loop.
+      </div>
+
+      <p>
+        <strong>Mitigation Strategy</strong>: The firmware implements a 50Hz discrete S-curve slew rate limiter. Velocity is capped at <strong>120&deg;/second</strong> ($2.4^\circ$ per 20 ms tick). Under this controlled acceleration, the motors never enter the dead-stall electrical regime, reducing peak current by <strong>65%</strong> to &le; 300 mA per actuator.
+      </p>
+    </section>
+
+    <!-- Chapter 3: Edge AI -->
+    <section id="edge-ai">
+      <h1 class="chapter-title"><span class="chapter-index">SEC 03</span> Edge AI Vision Pipeline</h1>
+
+      <p>
+        High-speed aerial targets present significant challenges for standard video stream ingestion. Standard socket decoders buffer multiple frames internally. If network jitter delays packet arrival, standard OpenCV readers deliver frames that are 200 ms to 500 ms old.
+      </p>
+
+      <!-- SVG Ingestion Diagram -->
+      <div class="diagram-container">
+        <svg viewBox="0 0 880 260" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+          <!-- Left: Conventional Buffered Stream -->
+          <rect x="30" y="30" width="380" height="200" rx="8" fill="#111827" stroke="#dc2626" stroke-width="1.5"/>
+          <text x="50" y="60" fill="#f87171" font-size="12" font-weight="700" class="mono">CONVENTIONAL STREAM (FAILURE MODE)</text>
+          
+          <rect x="50" y="80" width="55" height="40" rx="4" fill="#374151"/><text x="65" y="105" fill="#9ca3af" font-size="10" class="mono">F_t-5</text>
+          <rect x="115" y="80" width="55" height="40" rx="4" fill="#374151"/><text x="130" y="105" fill="#9ca3af" font-size="10" class="mono">F_t-4</text>
+          <rect x="180" y="80" width="55" height="40" rx="4" fill="#374151"/><text x="195" y="105" fill="#9ca3af" font-size="10" class="mono">F_t-3</text>
+          <rect x="245" y="80" width="55" height="40" rx="4" fill="#374151"/><text x="260" y="105" fill="#9ca3af" font-size="10" class="mono">F_t-2</text>
+          <rect x="310" y="80" width="55" height="40" rx="4" fill="#ef4444"/><text x="325" y="105" fill="#fff" font-size="10" class="mono">F_t-1</text>
+          
+          <text x="50" y="150" fill="#f87171" font-size="12" font-weight="600">Socket FIFO Buffer Queue (Stale Frames)</text>
+          <text x="50" y="172" fill="#94a3b8" font-size="11">Model processes frame t-5 while target has already moved.</text>
+          <text x="50" y="194" fill="#ef4444" font-size="12" font-weight="700" class="mono">Result: Severe Oscillation &amp; Overshoot</text>
+
+          <!-- Right: Zero-Lag Ingestion -->
+          <rect x="470" y="30" width="380" height="200" rx="8" fill="#111827" stroke="#10b981" stroke-width="1.5"/>
+          <text x="490" y="60" fill="#34d399" font-size="12" font-weight="700" class="mono">ZERO-LAG INGESTION ENGINE</text>
+
+          <rect x="490" y="80" width="220" height="45" rx="6" fill="#064e3b" stroke="#10b981"/>
+          <text x="510" y="102" fill="#fff" font-size="11" font-weight="700" class="mono">ATOMIC FRAME POINTER (RAM)</text>
+          <text x="510" y="116" fill="#a7f3d0" font-size="10" class="mono">Always Overwritten by Freshest Frame</text>
+
+          <text x="490" y="150" fill="#34d399" font-size="12" font-weight="600">Continuous Buffer Drain Thread</text>
+          <text x="490" y="172" fill="#94a3b8" font-size="11">Stale intermediary bytes are discarded instantly in memory.</text>
+          <text x="490" y="194" fill="#10b981" font-size="12" font-weight="700" class="mono">Latency: &lt; 2.0 ms Guaranteed Ingestion</text>
+        </svg>
+        <div class="diagram-caption">Figure 3.0: FIFO Socket Buffer Stalling vs. Atomic Zero-Lag Stream Ingestion</div>
+      </div>
+
+      <h2 class="section-title">Optical Error Coordinate Discretization</h2>
+      <p>
+        The vision model outputs bounding box coordinates $[x_{\min}, y_{\min}, x_{\max}, y_{\max}]$ along with a confidence coefficient. The aiming computer extracts the optical offset relative to the central camera boresight:
+      </p>
+
+      <div class="formula-block">
+        $$x_c = \frac{x_{\min} + x_{\max}}{2}, \quad y_c = \frac{y_{\min} + y_{\max}}{2}$$
+        $$\Delta x = x_c - \frac{W}{2}, \quad \Delta y = y_c - \frac{H}{2}$$
+        <div class="formula-note">Where W = 320 px, H = 240 px. A positive &Delta;x requires pan right; positive &Delta;y requires tilt downward.</div>
+      </div>
+    </section>
+
+    <!-- Chapter 4: Robotics & Kinematics -->
+    <section id="robotics">
+      <h1 class="chapter-title"><span class="chapter-index">SEC 04</span> Robotics, Kinematics &amp; Visual Servoing</h1>
+
+      <p>
+        Agesis EYE employs an **eye-in-hand** robotic configuration where the camera sensor and optical weapon are mounted directly onto the pivoting elevation C-arm. The two joints are separated vertically by a variable mechanical standoff stanchion of height $d$.
+      </p>
+
+      <!-- SVG Kinematics Diagram -->
+      <div class="diagram-container">
+        <svg viewBox="0 0 880 320" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+          <!-- Base Pedestal -->
+          <rect x="180" y="260" width="120" height="30" rx="4" fill="#e52521" stroke="#991b1b"/>
+          <text x="205" y="280" fill="#fff" font-size="11" font-weight="700" class="mono">GROUND BASE</text>
+
+          <rect x="220" y="190" width="40" height="70" rx="4" fill="#ea580c" stroke="#c2410c"/>
+          <text x="140" y="230" fill="#ea580c" font-size="11" font-weight="700" class="mono">Pedestal H0</text>
+
+          <!-- Pan Joint J1 -->
+          <circle cx="240" cy="190" r="14" fill="#432371" stroke="#a855f7" stroke-width="2"/>
+          <text x="265" y="195" fill="#a855f7" font-size="11" font-weight="700" class="mono">Pan Joint J1 (Z-Axis)</text>
+
+          <!-- Standoff d -->
+          <line x1="240" y1="190" x2="240" y2="80" stroke="#fff" stroke-width="4" stroke-dasharray="2 2"/>
+          <line x1="220" y1="190" x2="210" y2="190" stroke="#38bdf8" stroke-width="1.5"/>
+          <line x1="220" y1="80" x2="210" y2="80" stroke="#38bdf8" stroke-width="1.5"/>
+          <line x1="215" y1="190" x2="215" y2="80" stroke="#38bdf8" stroke-width="1.5"/>
+          <text x="145" y="140" fill="#38bdf8" font-size="12" font-weight="700" class="mono">Standoff d</text>
+
+          <!-- Tilt Joint J2 -->
+          <circle cx="240" cy="80" r="14" fill="#432371" stroke="#a855f7" stroke-width="2"/>
+          <text x="265" y="85" fill="#a855f7" font-size="11" font-weight="700" class="mono">Tilt Joint J2</text>
+
+          <!-- C-Arm Assembly -->
+          <path d="M 240 80 L 310 80 L 310 40 L 360 40 M 310 80 L 310 120 L 360 120" stroke="#e52521" stroke-width="6" fill="none"/>
+          <rect x="340" y="60" width="50" height="40" rx="4" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
+          <text x="345" y="84" fill="#38bdf8" font-size="10" font-weight="700" class="mono">Camera</text>
+
+          <!-- Laser Line of Sight -->
+          <line x1="390" y1="80" x2="720" y2="80" stroke="#e52521" stroke-width="2" stroke-dasharray="6 3"/>
+          <circle cx="720" cy="80" r="16" fill="#e52521" fill-opacity="0.3" stroke="#e52521" stroke-width="2"/>
+          <text x="750" y="85" fill="#e52521" font-size="12" font-weight="700" class="mono">Target Lock</text>
+
+          <!-- Invariance Annotation -->
+          <rect x="440" y="170" width="380" height="100" rx="6" fill="#0f172a" stroke="#232f48"/>
+          <text x="460" y="195" fill="#10b981" font-size="12" font-weight="700" class="mono">MATHEMATICAL PROOF: d-INVARIANCE</text>
+          <text x="460" y="218" fill="#94a3b8" font-size="11">1. Pan axis rotates around vertical Z-axis; independent of d.</text>
+          <text x="460" y="236" fill="#94a3b8" font-size="11">2. Camera on J2 makes optical line-of-sight error independent of d.</text>
+          <text x="460" y="254" fill="#38bdf8" font-size="11" class="mono">Visual error law holds for any physical stanchion height.</text>
+        </svg>
+        <div class="diagram-caption">Figure 4.0: 2-DoF Kinematic Coordinate Frames &amp; Mechanical Standoff Decoupling</div>
+      </div>
+
+      <h2 class="section-title">Proof of Distance d Invariance</h2>
+      <p>
+        In traditional pan-tilt kinematics, the spatial offset between the joints creates geometric parallax error that forces the operator to manually retune tracking gains whenever the riser height changes.
+      </p>
+
+      <div class="callout callout-success">
+        <div class="callout-header">Image-Based Visual Servoing Invariance Theorem</div>
+        By driving the control loop directly from image-space optical error $\mathbf{e} = [\Delta x, \Delta y]^T$, the targeting computer decouples mechanical geometry from servo actuation:
+        $$\Delta \theta_{\text{pan}} = -\arctan\left(\frac{\Delta x}{f_x}\right), \quad \Delta \theta_{\text{tilt}} = \arctan\left(\frac{\Delta y}{f_y}\right)$$
+        Because rotation around the vertical Z-axis is invariant along the stanchion line, and the elevation gimbal pivots directly around the optical center, the closed-loop convergence dynamics are <strong>strictly independent of the separation distance d</strong>.
+      </div>
+    </section>
+
+    <!-- Chapter 5: Physical AI -->
+    <section id="physical-ai">
+      <h1 class="chapter-title"><span class="chapter-index">SEC 05</span> Physical AI &amp; 3D Kinematic Digital Twin</h1>
+
+      <p>
+        Unlike disembodied AI models that operate strictly in virtual spaces (such as large language models or static image classifiers), <strong>Physical AI</strong> embodies perception directly in real physical systems that must obey conservation of momentum, thermal dissipation, motor torque constraints, and electrical power limits.
+      </p>
+
+      <!-- SVG CAD Matching Diagram -->
+      <div class="diagram-container">
+        <svg viewBox="0 0 880 280" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+          <!-- Physical Assembly Render Block -->
+          <rect x="40" y="30" width="380" height="220" rx="8" fill="#111827" stroke="#232f48" stroke-width="1.5"/>
+          <text x="60" y="58" fill="#e52521" font-size="12" font-weight="700" class="mono">TINKERCAD PHYSICAL CAD ASSEMBLY</text>
+          
+          <rect x="70" y="200" width="160" height="24" fill="#d9232a" stroke="#991b1b"/><text x="80" y="216" fill="#fff" font-size="10" class="mono">Red Baseplate</text>
+          <rect x="235" y="180" width="95" height="44" fill="#f6ad85" stroke="#ba7048"/><text x="245" y="206" fill="#3f1d0b" font-size="10" font-weight="700" class="mono">Peach Box</text>
+          <rect x="110" y="110" width="50" height="90" fill="#ea580c" stroke="#c2410c"/><text x="116" y="155" fill="#fff" font-size="10" class="mono">Pedestal</text>
+          <rect x="122" y="80" width="26" height="30" fill="#432371" stroke="#a855f7"/><text x="155" y="98" fill="#a855f7" font-size="10" class="mono">Pan SG90</text>
+          <rect x="130" y="45" width="10" height="35" fill="#36152e" stroke="#ff0f3d"/>
+          <rect x="145" y="40" width="55" height="30" fill="#d9232a" stroke="#991b1b"/><text x="205" y="58" fill="#fff" font-size="10" class="mono">Red C-Arm</text>
+
+          <!-- Right Digital Twin Mirror -->
+          <rect x="460" y="30" width="380" height="220" rx="8" fill="#111827" stroke="#10b981" stroke-width="1.5"/>
+          <text x="480" y="58" fill="#10b981" font-size="12" font-weight="700" class="mono">3D KINEMATIC DIGITAL TWIN</text>
+
+          <circle cx="650" cy="140" r="60" fill="none" stroke="#e52521" stroke-width="1" stroke-dasharray="3 3"/>
+          <circle cx="650" cy="140" r="35" fill="none" stroke="#e52521" stroke-width="1" stroke-dasharray="3 3"/>
+          <line x1="580" y1="140" x2="720" y2="140" stroke="rgba(255,15,60,0.3)"/>
+          <line x1="650" y1="70" x2="650" y2="210" stroke="rgba(255,15,60,0.3)"/>
+
+          <circle cx="650" cy="140" r="10" fill="#e52521"/>
+          <text x="480" y="216" fill="#38bdf8" font-size="11" class="mono">Real-Time WebSocket Synchronization @ 25Hz</text>
+          <text x="480" y="234" fill="#10b981" font-size="11" class="mono">Thermal Weapon Accumulation &amp; Shrapnel Physics</text>
+        </svg>
+        <div class="diagram-caption">Figure 5.0: Physical CAD Assembly vs. Real-Time Perspective Digital Twin Engine</div>
+      </div>
+
+      <h2 class="section-title">The 3D Perspective Projection Mathematics</h2>
+      <p>
+        The digital twin renders complex multi-body geometry directly onto an HTML5 Canvas at 60 FPS without external graphical engine bloat. The perspective projection converts 3D world coordinates $[X, Y, Z]^T$ to screen pixels $[X_{\text{screen}}, Y_{\text{screen}}]^T$:
+      </p>
+
+      <div class="formula-block">
+        $$\mathbf{P}_{\text{cam}} = \mathbf{R}_x(\theta_{\text{pitch}}) \cdot \mathbf{R}_y(\theta_{\text{yaw}}) \cdot (\mathbf{P}_{\text{world}} + \mathbf{T}_{\text{pan}})$$
+        $$\text{Scale} = \frac{f_{\text{fov}}}{\max(50, Z_{\text{cam}} + D)}$$
+        $$X_{\text{screen}} = \frac{W}{2} + X_{\text{cam}} \cdot \text{Scale}, \quad Y_{\text{screen}} = \frac{H}{2} - Y_{\text{cam}} \cdot \text{Scale}$$
+      </div>
+    </section>
+
+    <!-- Chapter 6: AI/ML Engineering -->
+    <section id="ai-ml">
+      <h1 class="chapter-title"><span class="chapter-index">SEC 06</span> AI/ML Engineering &amp; Optimization</h1>
+
+      <p>
+        The targeting intelligence utilizes a customized single-stage detector optimized for aerial micro-targets (balloons and drones). The neural network combines a cross-stage partial feature extractor with an anchor-free decoupled detection head.
+      </p>
+
+      <!-- SVG Neural Network Diagram -->
+      <div class="diagram-container">
+        <svg viewBox="0 0 880 240" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+          <!-- Input -->
+          <rect x="30" y="80" width="90" height="80" rx="6" fill="#1e293b" stroke="#38bdf8"/>
+          <text x="42" y="115" fill="#fff" font-size="11" font-weight="700">INPUT</text>
+          <text x="38" y="132" fill="#38bdf8" font-size="10" class="mono">384x384x3</text>
+
+          <path d="M 120 120 L 160 120" stroke="#64748b" stroke-width="2"/>
+
+          <!-- Backbone -->
+          <rect x="160" y="50" width="160" height="140" rx="6" fill="#111827" stroke="#232f48"/>
+          <text x="175" y="75" fill="#a855f7" font-size="11" font-weight="700" class="mono">BACKBONE (C2F)</text>
+          <rect x="175" y="90" width="130" height="26" rx="4" fill="#1e1b4b"/><text x="185" y="107" fill="#c084fc" font-size="10">Conv Stem (s=2)</text>
+          <rect x="175" y="122" width="130" height="26" rx="4" fill="#1e1b4b"/><text x="185" y="139" fill="#c084fc" font-size="10">Cross-Stage Blocks</text>
+          <rect x="175" y="154" width="130" height="26" rx="4" fill="#1e1b4b"/><text x="185" y="171" fill="#c084fc" font-size="10">SPPF Feature Pool</text>
+
+          <path d="M 320 120 L 360 120" stroke="#64748b" stroke-width="2"/>
+
+          <!-- Neck -->
+          <rect x="360" y="50" width="160" height="140" rx="6" fill="#111827" stroke="#232f48"/>
+          <text x="375" y="75" fill="#38bdf8" font-size="11" font-weight="700" class="mono">NECK (PANET)</text>
+          <rect x="375" y="95" width="130" height="35" rx="4" fill="#0f172a"/><text x="385" y="117" fill="#7dd3fc" font-size="10">Top-Down Pyramid</text>
+          <rect x="375" y="140" width="130" height="35" rx="4" fill="#0f172a"/><text x="385" y="162" fill="#7dd3fc" font-size="10">Bottom-Up Path</text>
+
+          <path d="M 520 120 L 560 120" stroke="#64748b" stroke-width="2"/>
+
+          <!-- Decoupled Head -->
+          <rect x="560" y="50" width="280" height="140" rx="6" fill="#111827" stroke="#e52521"/>
+          <text x="575" y="75" fill="#e52521" font-size="11" font-weight="700" class="mono">DECOUPLED ANCHOR-FREE HEAD</text>
+          <rect x="575" y="95" width="250" height="35" rx="4" fill="#2c1214"/><text x="590" y="117" fill="#fca5a5" font-size="10">Regression Branch (CIoU + DFL Loss)</text>
+          <rect x="575" y="140" width="250" height="35" rx="4" fill="#2c1214"/><text x="590" y="162" fill="#fca5a5" font-size="10">Classification Branch (BCE Loss)</text>
+        </svg>
+        <div class="diagram-caption">Figure 6.0: Single-Stage Anchor-Free YOLO Edge Detection Architecture</div>
+      </div>
+
+      <h2 class="section-title">Multi-Task Loss Formulation</h2>
+      <div class="formula-block">
+        $$\mathcal{L}_{\text{total}} = \lambda_{\text{box}} \mathcal{L}_{\text{CIoU}} + \lambda_{\text{dfl}} \mathcal{L}_{\text{DFL}} + \lambda_{\text{cls}} \mathcal{L}_{\text{BCE}}$$
+        <div class="formula-note">Where CIoU optimizes bounding box aspect ratio and centroid Euclidean distance; DFL provides probabilistic boundary regression.</div>
+      </div>
+    </section>
+
+    <!-- Chapter 7: Hardware & Safety -->
+    <section id="hardware">
+      <h1 class="chapter-title"><span class="chapter-index">SEC 07</span> Assembly, Wiring &amp; Safety Protocols</h1>
+
+      <p>
+        Operating high-energy electro-optical emitters requires rigorous safety fail-safes. The Agesis EYE firmware and ground station implement a five-stage hardware interlock finite state machine.
+      </p>
+
+      <!-- SVG Safety FSM Diagram -->
+      <div class="diagram-container">
+        <svg viewBox="0 0 880 200" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+          <!-- State 1: DISARMED -->
+          <rect x="30" y="70" width="150" height="60" rx="6" fill="#111827" stroke="#64748b" stroke-width="2"/>
+          <text x="50" y="96" fill="#94a3b8" font-size="11" font-weight="700" class="mono">STATE 1: SAFE</text>
+          <text x="50" y="114" fill="#fff" font-size="12" font-weight="800">DISARMED</text>
+
+          <path d="M 180 100 L 250 100" stroke="#38bdf8" stroke-width="2"/>
+
+          <!-- State 2: ARMED -->
+          <rect x="250" y="70" width="150" height="60" rx="6" fill="#111827" stroke="#f59e0b" stroke-width="2"/>
+          <text x="270" y="96" fill="#f59e0b" font-size="11" font-weight="700" class="mono">STATE 2: READY</text>
+          <text x="270" y="114" fill="#fff" font-size="12" font-weight="800">ARMED</text>
+
+          <path d="M 400 100 L 470 100" stroke="#38bdf8" stroke-width="2"/>
+
+          <!-- State 3: ACQUIRING -->
+          <rect x="470" y="70" width="160" height="60" rx="6" fill="#111827" stroke="#38bdf8" stroke-width="2"/>
+          <text x="485" y="96" fill="#38bdf8" font-size="11" font-weight="700" class="mono">STATE 3: LOCKING</text>
+          <text x="485" y="114" fill="#fff" font-size="12" font-weight="800">&ge; 3 Hits Confirmed</text>
+
+          <path d="M 630 100 L 700 100" stroke="#e52521" stroke-width="2"/>
+
+          <!-- State 4: ACTIVE FIRING -->
+          <rect x="700" y="70" width="150" height="60" rx="6" fill="#450a0a" stroke="#e52521" stroke-width="2"/>
+          <text x="720" y="96" fill="#f87171" font-size="11" font-weight="700" class="mono">STATE 4: ACTIVE</text>
+          <text x="720" y="114" fill="#fff" font-size="12" font-weight="800">FIRING BEAM</text>
+
+          <!-- Cutoff Return Path -->
+          <path d="M 775 130 L 775 170 L 325 170 L 325 130" stroke="#64748b" stroke-width="1.5" stroke-dasharray="4 4" fill="none"/>
+          <text x="440" y="185" fill="#94a3b8" font-size="10" class="mono">Instant Auto-Cutoff if Target Lost &gt; 300ms OR Max Duration &gt; 1.5s</text>
+        </svg>
+        <div class="diagram-caption">Figure 7.0: Five-Stage Failsafe Interlock Finite State Machine Architecture</div>
+      </div>
+
+      <h2 class="section-title">Safety Operational Checklist</h2>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Protocol Level</th>
+              <th>Trigger Condition</th>
+              <th>System Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Pre-Arm Interlock</strong></td>
+              <td>System boot / default state</td>
+              <td>Emitter hardware gate held LOW (0V). Software locked.</td>
+            </tr>
+            <tr>
+              <td><strong>Lock Verification</strong></td>
+              <td>Detections &lt; 3 consecutive frames</td>
+              <td>Beam inhibited. Prevents transient glint discharges.</td>
+            </tr>
+            <tr>
+              <td><strong>Centering Guard</strong></td>
+              <td>Boresight error &gt; 16 pixels</td>
+              <td>Beam inhibited until turret aligns within target cone.</td>
+            </tr>
+            <tr>
+              <td><strong>Loss-of-Target Cutoff</strong></td>
+              <td>Target lost &gt; 300 milliseconds</td>
+              <td>Instant sub-millisecond hardware disarm.</td>
+            </tr>
+            <tr>
+              <td><strong>Thermal Duty Cap</strong></td>
+              <td>Continuous firing &gt; 1.5 seconds</td>
+              <td>Mandatory 2.0-second hardware cooldown lockout enforced.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
   </main>
 
   <script>
-    // Highlight active section on scroll
+    // Highlight active sidebar item on scroll
     window.addEventListener('scroll', () => {
-      const headings = document.querySelectorAll('h1[id]');
+      const headings = document.querySelectorAll('section[id], header[id]');
       let current = '';
       headings.forEach(h => {
         const top = h.getBoundingClientRect().top;
-        if (top <= 120) current = h.id;
+        if (top <= 140) current = h.id;
       });
-      document.querySelectorAll('.toc-link').forEach(link => {
+      document.querySelectorAll('.toc-item a').forEach(link => {
         link.classList.remove('active');
         if (link.getAttribute('href') === '#' + current) {
           link.classList.add('active');
@@ -536,99 +1137,41 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 </html>
 """
 
-def clean_mermaid_to_html(content: str) -> str:
-    """Converts Mermaid codeblocks into clean readable diagram pre elements."""
-    def repl(m):
-        raw = m.group(1).strip()
-        return f'<div class="diagram-card"><pre>{raw}</pre></div>'
-    return re.sub(r'```mermaid\s+(.*?)\s+```', repl, content, flags=re.DOTALL)
+def generate():
+    print("[*] Generating Publication-Grade HTML Technical Whitepaper...")
+    out_html = os.path.join(DOCS_DIR, "index.html")
+    with open(out_html, "w", encoding="utf-8") as f:
+        f.write(HTML_CONTENT)
+    print(f"[+] Clean Technical Whitepaper generated: {out_html} ({len(HTML_CONTENT):,} bytes)")
 
-def build():
-    print("[*] Compiling Agesis EYE Documentation Suite...")
-    
-    md_parser = markdown.Markdown(extensions=[
-        'tables',
-        'fenced_code',
-        'toc',
-        'attr_list',
-        'nl2br'
-    ])
-    
-    toc_items = []
-    body_parts = []
-    
-    for idx, (filename, title) in enumerate(CHAPTERS):
-        filepath = os.path.join(DOCS_DIR, filename)
-        if not os.path.exists(filepath):
-            print(f"[!] Warning: Missing file {filepath}")
-            continue
-            
-        with open(filepath, "r", encoding="utf-8") as f:
-            raw_text = f.read()
-            
-        # Clean local markdown file links to in-page anchor links
-        raw_text = re.sub(r'\[([^\]]+)\]\(file:///[^\)]+/(0[1-7]_[^\)]+\.md)\)', r'[\1](#\2)', raw_text)
-        raw_text = re.sub(r'\[([^\]]+)\]\(file:///[^\)]+/README\.md\)', r'[\1](#overview)', raw_text)
-        
-        # Give unique anchor IDs
-        chapter_id = "overview" if "README" in filename else filename.replace(".md", "")
-        
-        # Replace mermaid blocks with diagram cards
-        processed_text = clean_mermaid_to_html(raw_text)
-        
-        # Convert to HTML
-        html_segment = md_parser.convert(processed_text)
-        
-        # Ensure the first h1 has the chapter anchor ID
-        html_segment = re.sub(r'<h1([^>]*)>', f'<h1 id="{chapter_id}"\\1>', html_segment, count=1)
-        
-        toc_items.append(
-            f'<li class="toc-item"><a class="toc-link" href="#{chapter_id}">{title}</a></li>'
-        )
-        
-        if idx > 0:
-            body_parts.append('<div class="chapter-divider"></div>')
-        body_parts.append(f'<section class="chapter-section" id="section-{chapter_id}">\n{html_segment}\n</section>')
-
-    full_html = HTML_TEMPLATE.replace("__TOC_ITEMS__", "\n      ".join(toc_items))
-    full_html = full_html.replace("__BODY_CONTENT__", "\n".join(body_parts))
-    
-    out_html_path = os.path.join(DOCS_DIR, "index.html")
-    with open(out_html_path, "w", encoding="utf-8") as f:
-        f.write(full_html)
-    print(f"[+] Unified HTML Manual generated: {out_html_path} ({len(full_html):,} bytes)")
-
-    # Generate PDF using Headless Edge or Chrome
-    pdf_out_path = os.path.join(DOCS_DIR, "Agesis_EYE_Complete_Manual.pdf")
-    browser_candidates = [
+    # Compile PDF using Edge / Chrome headless with print-color-adjust enabled
+    pdf_out = os.path.join(DOCS_DIR, "Agesis_EYE_Complete_Manual.pdf")
+    browsers = [
         r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
         r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
         r"C:\Program Files\Google\Chrome\Application\chrome.exe",
     ]
-    browser_exe = next((b for b in browser_candidates if os.path.exists(b)), None)
-    
-    if browser_exe:
-        print(f"[*] Rendering high-resolution PDF via: {browser_exe}")
-        file_url = f"file:///{out_html_path.replace(os.sep, '/')}"
+    browser = next((b for b in browsers if os.path.exists(b)), None)
+    if browser:
+        print(f"[*] Compiling High-Resolution Vector PDF via: {browser}")
+        file_url = f"file:///{out_html.replace(os.sep, '/')}"
         cmd = [
-            browser_exe,
+            browser,
             "--headless",
             "--disable-gpu",
             "--run-all-compositor-stages-before-draw",
-            f"--print-to-pdf={pdf_out_path}",
+            f"--print-to-pdf={pdf_out}",
             "--no-pdf-header-footer",
             file_url
         ]
         try:
             res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=45)
-            if os.path.exists(pdf_out_path) and os.path.getsize(pdf_out_path) > 1000:
-                print(f"[+] PDF Manual successfully compiled: {pdf_out_path} ({os.path.getsize(pdf_out_path):,} bytes)")
+            if os.path.exists(pdf_out) and os.path.getsize(pdf_out) > 5000:
+                print(f"[+] Vector PDF Manual successfully created: {pdf_out} ({os.path.getsize(pdf_out):,} bytes)")
             else:
-                print(f"[!] PDF generation failed or empty. Stderr: {res.stderr.decode()}")
+                print(f"[!] PDF generation failed: {res.stderr.decode()}")
         except Exception as e:
-            print(f"[!] Subprocess error rendering PDF: {e}")
-    else:
-        print("[!] No compatible browser executable found for headless PDF printing.")
+            print(f"[!] Error compiling PDF: {e}")
 
 if __name__ == "__main__":
-    build()
+    generate()
