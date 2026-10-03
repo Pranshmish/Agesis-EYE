@@ -6,6 +6,9 @@
 
 **Agesis EYE** is an autonomous tracking and targeting ground station for a 2-axis Pan-Tilt turret. An ESP32-CAM streams live video over Wi-Fi, and a ground-station AI engine detects aerial targets with zero latency and drives the turret in closed-loop servo tracking.
 
+> 📖 **Comprehensive Technical Documentation & Engineering Curriculum**:
+> Full in-depth documentation covering **Edge AI, Robotics, Physical AI, Machine Learning, and Embedded Systems** is available in the [**docs/**](file:///c:/Users/ASUS/Desktop/Agesis%20EYE/docs/README.md) directory.
+
 ---
 
 ## ⚡ 3-Step Workshop Quickstart
