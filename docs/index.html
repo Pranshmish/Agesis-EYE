@@ -861,6 +861,15 @@
       .diagram-panel svg text.mono {
         fill: #334155 !important;
       }
+
+      .diagram-panel svg path[stroke="#ff2a85"],
+      .diagram-panel svg line[stroke="#ff2a85"] {
+        stroke: #db2777 !important;
+      }
+
+      .diagram-panel svg marker path[fill="#ff2a85"] {
+        fill: #db2777 !important;
+      }
     }
   </style>
 </head>
@@ -878,6 +887,7 @@
     <ul class="toc-list">
       <li class="toc-item"><a href="#executive" class="active"><span class="num">00</span> Executive Overview</a></li>
       <li class="toc-item"><a href="#architecture"><span class="num">01</span> System Architecture</a></li>
+      <li class="toc-item"><a href="#pipeline-flow"><span class="num">01B</span> Closed-Loop Flowchart</a></li>
       <li class="toc-item"><a href="#embedded"><span class="num">02</span> Embedded Systems &amp; PWM</a></li>
       <li class="toc-item"><a href="#edge-ai"><span class="num">03</span> Edge AI Vision Pipeline</a></li>
       <li class="toc-item"><a href="#robotics"><span class="num">04</span> Robotics &amp; Kinematics</a></li>
@@ -957,22 +967,28 @@
         The Agesis EYE architecture cleanly decouples responsibilities across three physical and computational domains: the Edge Sensor/Actuator Node, the High-Speed Network Fabric, and the Ground Command &amp; Inference Station.
       </p>
 
-      <!-- SVG Architecture Diagram: Glowing Pink, Electric Yellow & Blood Red -->
+      <!-- SVG Architecture Diagram: Glowing Pink Flow Connecting Lines, Yellow & Blood Red Nodes -->
       <div class="diagram-panel">
         <svg viewBox="0 0 880 340" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <filter id="glow-pink" x="-30%" y="-30%" width="160%" height="160%">
-              <feGaussianBlur stdDeviation="4" result="blur" />
+              <feGaussianBlur stdDeviation="3.5" result="blur" />
               <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
             </filter>
             <filter id="glow-yellow" x="-30%" y="-30%" width="160%" height="160%">
-              <feGaussianBlur stdDeviation="4" result="blur" />
+              <feGaussianBlur stdDeviation="3.5" result="blur" />
               <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
             </filter>
             <filter id="glow-red" x="-30%" y="-30%" width="160%" height="160%">
-              <feGaussianBlur stdDeviation="5" result="blur" />
+              <feGaussianBlur stdDeviation="4" result="blur" />
               <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
             </filter>
+            <marker id="arrow-pink" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1 L 8 5 L 0 9 z" fill="#ff2a85" />
+            </marker>
+            <marker id="arrow-yellow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1 L 8 5 L 0 9 z" fill="#ffd600" />
+            </marker>
           </defs>
 
           <!-- TIER 1: Edge Node -->
@@ -994,17 +1010,27 @@
           <text x="50" y="268" fill="#ff2a85" font-size="10" class="mono">Laser Diode Trigger (IO14)</text>
 
           <!-- Middle Network Bridge -->
-          <rect x="310" y="60" width="260" height="220" rx="10" fill="rgba(12, 10, 16, 0.85)" stroke="#ffd600" stroke-dasharray="5 5" stroke-width="1.5"/>
-          <text x="330" y="90" fill="#ffd600" font-size="11" font-weight="800" class="mono" filter="url(#glow-yellow)">TIER 2: NETWORK FABRIC</text>
+          <rect x="305" y="55" width="270" height="230" rx="10" fill="rgba(12, 10, 16, 0.85)" stroke="#ffd600" stroke-dasharray="5 5" stroke-width="1.5"/>
+          <text x="325" y="85" fill="#ffd600" font-size="11" font-weight="800" class="mono" filter="url(#glow-yellow)">TIER 2: NETWORK FABRIC</text>
 
-          <!-- Arrows & Pipes -->
-          <path d="M 255 94 L 330 120" stroke="#ff2a85" stroke-width="2.5" fill="none" filter="url(#glow-pink)"/>
-          <rect x="330" y="105" width="220" height="36" rx="6" fill="rgba(255, 42, 133, 0.2)" stroke="#ff2a85" stroke-width="1.2"/>
-          <text x="345" y="127" fill="#ff2a85" font-size="11" font-weight="700" class="mono">Port 81: MJPEG Video Stream</text>
+          <!-- Stream 1: Forward MJPEG Stream (Glowing Pink Line & Arrows) -->
+          <path d="M 255 94 C 285 94, 295 118, 325 118" stroke="#ff2a85" stroke-width="2.5" fill="none" filter="url(#glow-pink)" marker-end="url(#arrow-pink)"/>
+          
+          <rect x="325" y="100" width="230" height="38" rx="6" fill="rgba(255, 42, 133, 0.2)" stroke="#ff2a85" stroke-width="1.5" filter="url(#glow-pink)"/>
+          <text x="340" y="124" fill="#ff2a85" font-size="11" font-weight="700" class="mono">Port 81: MJPEG Video Stream</text>
+          
+          <path d="M 555 118 C 585 118, 595 96, 625 96" stroke="#ff2a85" stroke-width="2.5" fill="none" filter="url(#glow-pink)" marker-end="url(#arrow-pink)"/>
 
-          <path d="M 610 215 L 255 165" stroke="#ffd600" stroke-width="2.5" fill="none" filter="url(#glow-yellow)"/>
-          <rect x="330" y="175" width="220" height="36" rx="6" fill="rgba(255, 214, 0, 0.18)" stroke="#ffd600" stroke-width="1.2"/>
-          <text x="345" y="197" fill="#ffd600" font-size="11" font-weight="700" class="mono">Port 8888: Sub-ms UDP Commands</text>
+          <!-- Stream 2: Feedback UDP Telemetry & Actuation (Glowing Pink Line & Arrows) -->
+          <path d="M 625 220 C 595 220, 585 198, 555 198" stroke="#ff2a85" stroke-width="2.5" fill="none" filter="url(#glow-pink)" marker-end="url(#arrow-pink)"/>
+          
+          <rect x="325" y="180" width="230" height="38" rx="6" fill="rgba(255, 214, 0, 0.18)" stroke="#ffd600" stroke-width="1.5" filter="url(#glow-yellow)"/>
+          <text x="340" y="204" fill="#ffd600" font-size="11" font-weight="700" class="mono">Port 8888: Sub-ms UDP Commands</text>
+          
+          <path d="M 325 198 C 295 198, 285 164, 255 164" stroke="#ff2a85" stroke-width="2.5" fill="none" filter="url(#glow-pink)" marker-end="url(#arrow-pink)"/>
+
+          <!-- Internal Edge Node Actuation Flow (Glowing Pink) -->
+          <path d="M 145 198 L 145 208" stroke="#ff2a85" stroke-width="2" fill="none" filter="url(#glow-pink)" marker-end="url(#arrow-pink)"/>
 
           <!-- Right Ground Station -->
           <rect x="610" y="20" width="250" height="300" rx="10" fill="rgba(16, 12, 18, 0.75)" stroke="#ff0f3d" stroke-width="1.8" filter="url(#glow-red)"/>
@@ -1014,13 +1040,22 @@
           <text x="640" y="92" fill="#fff" font-size="12" font-weight="700">Zero-Lag Ingestion Daemon</text>
           <text x="640" y="108" fill="#ff2a85" font-size="10" class="mono">Buffer-Draining Thread (&lt;2ms)</text>
 
+          <!-- Internal Ground Station Flow 1 (Glowing Pink) -->
+          <path d="M 735 122 L 735 130" stroke="#ff2a85" stroke-width="2" fill="none" filter="url(#glow-pink)" marker-end="url(#arrow-pink)"/>
+
           <rect x="625" y="132" width="220" height="52" rx="6" fill="rgba(255, 214, 0, 0.15)" stroke="#ffd600" stroke-width="1.5"/>
           <text x="640" y="154" fill="#fff" font-size="12" font-weight="700">ONNX Edge Vision Core</text>
           <text x="640" y="170" fill="#ffd600" font-size="10" class="mono">agesis06.onnx (45+ FPS CPU)</text>
 
+          <!-- Internal Ground Station Flow 2 (Glowing Pink) -->
+          <path d="M 735 184 L 735 192" stroke="#ff2a85" stroke-width="2" fill="none" filter="url(#glow-pink)" marker-end="url(#arrow-pink)"/>
+
           <rect x="625" y="194" width="220" height="52" rx="6" fill="rgba(255, 15, 61, 0.15)" stroke="#ff0f3d" stroke-width="1.5"/>
           <text x="640" y="216" fill="#fff" font-size="12" font-weight="700">Kinematics &amp; Safety Master</text>
           <text x="640" y="232" fill="#ffd600" font-size="10" class="mono">d-Invariant Visual Servoing</text>
+
+          <!-- Internal Ground Station Flow 3 (Glowing Pink) -->
+          <path d="M 735 246 L 735 254" stroke="#ff2a85" stroke-width="2" fill="none" filter="url(#glow-pink)" marker-end="url(#arrow-pink)"/>
 
           <rect x="625" y="256" width="220" height="52" rx="6" fill="rgba(255, 255, 255, 0.05)" stroke="rgba(255, 15, 61, 0.4)"/>
           <text x="640" y="278" fill="#fff" font-size="12" font-weight="700">Tactical HUD &amp; Digital Twin</text>
@@ -1104,6 +1139,121 @@
       </div>
     </section>
 
+    <!-- Section 1B: Procedural Control Flowchart -->
+    <section id="pipeline-flow">
+      <h1 class="chapter-heading"><span class="chapter-badge">SEC 01B</span> Closed-Loop Control Flowchart &amp; Decision Logic</h1>
+
+      <p>
+        The tracking loop executes deterministically at 30 to 45 Hz. The flowchart below maps the sequential transitions, verification gates, safety checks, and actuation commands from raw photon intake to physical motor micro-stepping.
+      </p>
+
+      <!-- New High-Value Flowchart: Figure 1.1 Complete Optical Servoing Pipeline Flowchart -->
+      <div class="diagram-panel">
+        <svg viewBox="0 0 880 440" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+          <!-- Flowchart Row 1: Perception & Inference -->
+          <!-- Node 1: Capture -->
+          <rect x="30" y="30" width="170" height="52" rx="6" fill="rgba(255, 42, 133, 0.15)" stroke="#ff2a85" stroke-width="1.8" filter="url(#glow-pink)"/>
+          <text x="45" y="52" fill="#fff" font-size="11" font-weight="800">1. OPTICAL EXPOSURE</text>
+          <text x="45" y="68" fill="#ff2a85" font-size="10" class="mono">OV2640 (320x240 @ 30 FPS)</text>
+
+          <!-- Pink Connecting Line 1 -> 2 -->
+          <path d="M 200 56 L 240 56" stroke="#ff2a85" stroke-width="2.5" fill="none" filter="url(#glow-pink)" marker-end="url(#arrow-pink)"/>
+
+          <!-- Node 2: Zero-Lag Ingest -->
+          <rect x="240" y="30" width="180" height="52" rx="6" fill="rgba(255, 214, 0, 0.15)" stroke="#ffd600" stroke-width="1.8" filter="url(#glow-yellow)"/>
+          <text x="255" y="52" fill="#fff" font-size="11" font-weight="800">2. ZERO-LAG INGEST</text>
+          <text x="255" y="68" fill="#ffd600" font-size="10" class="mono">Atomic Pointer Swap (&lt;2ms)</text>
+
+          <!-- Pink Connecting Line 2 -> 3 -->
+          <path d="M 420 56 L 460 56" stroke="#ff2a85" stroke-width="2.5" fill="none" filter="url(#glow-pink)" marker-end="url(#arrow-pink)"/>
+
+          <!-- Node 3: Preprocess -->
+          <rect x="460" y="30" width="170" height="52" rx="6" fill="rgba(255, 42, 133, 0.15)" stroke="#ff2a85" stroke-width="1.8"/>
+          <text x="475" y="52" fill="#fff" font-size="11" font-weight="800">3. PREPROCESS</text>
+          <text x="475" y="68" fill="#ff2a85" font-size="10" class="mono">Letterbox 384x384 Tensor</text>
+
+          <!-- Pink Connecting Line 3 -> 4 -->
+          <path d="M 630 56 L 670 56" stroke="#ff2a85" stroke-width="2.5" fill="none" filter="url(#glow-pink)" marker-end="url(#arrow-pink)"/>
+
+          <!-- Node 4: Neural Inference -->
+          <rect x="670" y="30" width="180" height="52" rx="6" fill="rgba(255, 15, 61, 0.2)" stroke="#ff0f3d" stroke-width="1.8" filter="url(#glow-red)"/>
+          <text x="685" y="52" fill="#fff" font-size="11" font-weight="800">4. ONNX INFERENCE</text>
+          <text x="685" y="68" fill="#ffd600" font-size="10" class="mono">agesis06.onnx (45+ FPS)</text>
+
+          <!-- Connecting Line 4 -> Decision Diamond 1 (Curved Downwards Pink) -->
+          <path d="M 760 82 L 760 130" stroke="#ff2a85" stroke-width="2.5" fill="none" filter="url(#glow-pink)" marker-end="url(#arrow-pink)"/>
+
+          <!-- Decision Diamond 1: Target Confirmed? -->
+          <polygon points="760,130 850,170 760,210 670,170" fill="rgba(255, 214, 0, 0.18)" stroke="#ffd600" stroke-width="2" filter="url(#glow-yellow)"/>
+          <text x="715" y="166" fill="#fff" font-size="11" font-weight="800">TARGET DETECTED?</text>
+          <text x="725" y="180" fill="#ffd600" font-size="9" class="mono">Conf &ge; 0.65</text>
+
+          <!-- Branch NO: Return loop to next frame (Pink dashed) -->
+          <path d="M 850 170 L 870 170 L 870 15 L 115 15 L 115 30" stroke="#ff2a85" stroke-width="1.8" stroke-dasharray="4 4" fill="none" filter="url(#glow-pink)" marker-end="url(#arrow-pink)"/>
+          <text x="825" y="135" fill="#ff2a85" font-size="10" font-weight="800" class="mono">NO (Coast)</text>
+
+          <!-- Branch YES: Continue to Kinematics (Pink arrow to the left) -->
+          <path d="M 670 170 L 590 170" stroke="#ff2a85" stroke-width="2.5" fill="none" filter="url(#glow-pink)" marker-end="url(#arrow-pink)"/>
+          <text x="615" y="162" fill="#ffd600" font-size="10" font-weight="800" class="mono">YES</text>
+
+          <!-- Node 5: Error Extraction -->
+          <rect x="400" y="145" width="190" height="50" rx="6" fill="rgba(255, 42, 133, 0.15)" stroke="#ff2a85" stroke-width="1.8" filter="url(#glow-pink)"/>
+          <text x="415" y="166" fill="#fff" font-size="11" font-weight="800">5. CENTROID EXTRACTION</text>
+          <text x="415" y="182" fill="#ff2a85" font-size="10" class="mono">dx = Xc - 160 &bull; dy = Yc - 120</text>
+
+          <!-- Pink Connecting Line 5 -> 6 -->
+          <path d="M 400 170 L 330 170" stroke="#ff2a85" stroke-width="2.5" fill="none" filter="url(#glow-pink)" marker-end="url(#arrow-pink)"/>
+
+          <!-- Node 6: IBVS Kinematics (d-Invariant) -->
+          <rect x="130" y="145" width="200" height="50" rx="6" fill="rgba(255, 214, 0, 0.15)" stroke="#ffd600" stroke-width="1.8" filter="url(#glow-yellow)"/>
+          <text x="145" y="166" fill="#fff" font-size="11" font-weight="800">6. IBVS KINEMATICS</text>
+          <text x="145" y="182" fill="#ffd600" font-size="10" class="mono">&Delta;&theta; = -atan(dx/fx) (d-Invariant)</text>
+
+          <!-- Connecting Line 6 -> 7 (Curved down to Row 3) -->
+          <path d="M 230 195 L 230 250" stroke="#ff2a85" stroke-width="2.5" fill="none" filter="url(#glow-pink)" marker-end="url(#arrow-pink)"/>
+
+          <!-- Flowchart Row 3: Slew Limiting, Safety & Actuation -->
+          <!-- Node 7: S-Curve Slew Limiting -->
+          <rect x="130" y="250" width="200" height="54" rx="6" fill="rgba(255, 15, 61, 0.2)" stroke="#ff0f3d" stroke-width="1.8" filter="url(#glow-red)"/>
+          <text x="145" y="272" fill="#fff" font-size="11" font-weight="800">7. S-CURVE SLEW CAP</text>
+          <text x="145" y="288" fill="#ff2a85" font-size="10" class="mono">Max 120&deg;/s &bull; Peak &le; 280mA</text>
+
+          <!-- Pink Connecting Line 7 -> Decision Diamond 2 -->
+          <path d="M 330 277 L 410 277" stroke="#ff2a85" stroke-width="2.5" fill="none" filter="url(#glow-pink)" marker-end="url(#arrow-pink)"/>
+
+          <!-- Decision Diamond 2: Alignment & Lock Guard -->
+          <polygon points="500,240 590,277 500,314 410,277" fill="rgba(255, 42, 133, 0.2)" stroke="#ff2a85" stroke-width="2" filter="url(#glow-pink)"/>
+          <text x="450" y="272" fill="#fff" font-size="11" font-weight="800">ALIGNED &amp; LOCKED?</text>
+          <text x="455" y="287" fill="#ff2a85" font-size="9" class="mono">|dx| &lt; 16px &bull; N &ge; 3 Hits</text>
+
+          <!-- Branch NO: Slew Motors Only (Laser Inhibit) -->
+          <path d="M 500 314 L 500 370 L 380 370" stroke="#ffd600" stroke-width="2" fill="none" filter="url(#glow-yellow)" marker-end="url(#arrow-yellow)"/>
+          <text x="510" y="340" fill="#ffd600" font-size="9" font-weight="800" class="mono">NO: DISARM BEAM</text>
+
+          <rect x="200" y="345" width="180" height="48" rx="6" fill="rgba(100, 116, 139, 0.2)" stroke="#64748b" stroke-width="1.5"/>
+          <text x="215" y="367" fill="#fff" font-size="11" font-weight="700">TRACK ONLY (SAFE)</text>
+          <text x="215" y="381" fill="#94a3b8" font-size="9" class="mono">Laser LOW &bull; Pan/Tilt Active</text>
+
+          <!-- Branch YES: Fire Beam Emitter -->
+          <path d="M 590 277 L 670 277" stroke="#ff0f3d" stroke-width="2.5" fill="none" filter="url(#glow-red)" marker-end="url(#arrow-pink)"/>
+          <text x="615" y="268" fill="#ff0f3d" font-size="10" font-weight="800" class="mono">YES: ENGAGE</text>
+
+          <rect x="670" y="250" width="180" height="54" rx="6" fill="rgba(255, 15, 61, 0.3)" stroke="#ff0f3d" stroke-width="2" filter="url(#glow-red)"/>
+          <text x="685" y="272" fill="#fff" font-size="11" font-weight="900">FIRE LASER BEAM</text>
+          <text x="685" y="288" fill="#ffd600" font-size="10" class="mono">Pin 14 HIGH (Max 1.5s Cap)</text>
+
+          <!-- Convergence Path to 14-Bit PWM Hardware Execution -->
+          <path d="M 760 304 L 760 370 L 640 370" stroke="#ff2a85" stroke-width="2.5" fill="none" filter="url(#glow-pink)" marker-end="url(#arrow-pink)"/>
+
+          <!-- Final Actuation Node -->
+          <rect x="440" y="345" width="200" height="48" rx="6" fill="rgba(255, 214, 0, 0.18)" stroke="#ffd600" stroke-width="1.8" filter="url(#glow-yellow)"/>
+          <text x="455" y="367" fill="#fff" font-size="11" font-weight="800">8. LEDC 14-BIT PWM</text>
+          <text x="455" y="381" fill="#ffd600" font-size="10" class="mono">50Hz SG90 Update (0.0135&deg;/Tick)</text>
+        </svg>
+        <div class="diagram-caption">Figure 1.1: Closed-Loop Optical Visual Servoing Pipeline &amp; Decision Flowchart</div>
+      </div>
+    </section>
+
     <!-- Section 2: Embedded Systems -->
     <section id="embedded">
       <h1 class="chapter-heading"><span class="chapter-badge">SEC 02</span> Embedded Systems &amp; 14-Bit PWM Control</h1>
@@ -1153,10 +1303,10 @@
           <rect x="340" y="230" width="240" height="40" rx="4" fill="rgba(255, 15, 61, 0.2)" stroke="#ff0f3d"/>
           <text x="355" y="254" fill="#ff0f3d" font-size="11" font-weight="700">GPIO 14: Laser Diode Trigger</text>
 
-          <!-- Peripheral Actuators -->
-          <path d="M 600 150 L 660 150" stroke="#ffd600" stroke-width="3"/>
-          <path d="M 600 200 L 660 200" stroke="#ff2a85" stroke-width="3"/>
-          <path d="M 600 250 L 660 250" stroke="#ff0f3d" stroke-width="3"/>
+          <!-- Peripheral Actuator Pipes (Glowing Pink Flow Lines & Markers) -->
+          <path d="M 580 150 L 660 150" stroke="#ff2a85" stroke-width="2.5" fill="none" filter="url(#glow-pink)" marker-end="url(#arrow-pink)"/>
+          <path d="M 580 200 L 660 200" stroke="#ff2a85" stroke-width="2.5" fill="none" filter="url(#glow-pink)" marker-end="url(#arrow-pink)"/>
+          <path d="M 580 250 L 660 250" stroke="#ff2a85" stroke-width="2.5" fill="none" filter="url(#glow-pink)" marker-end="url(#arrow-pink)"/>
 
           <!-- Pan Servo -->
           <rect x="660" y="125" width="190" height="60" rx="6" fill="rgba(255, 214, 0, 0.15)" stroke="#ffd600" stroke-width="1.5" filter="url(#glow-yellow)"/>
@@ -1249,6 +1399,53 @@
       <p>
         <strong>Firmware Mitigation:</strong> The ESP32 firmware executes a 50 Hz discrete S-curve slew rate limiter. Velocity is capped at <strong>120&deg;/second</strong> ($2.4^\circ$ per 20 ms timer tick). Under this controlled acceleration envelope, the motors never enter the dead-stall electrical regime, reducing peak current by <strong>65%</strong> to &le; 280 mA per actuator and maintaining total system draw at 980 mA (a healthy 51% safety margin).
       </p>
+
+      <!-- New Flowchart 2.1: Slew-Rate Limiter Execution Flowchart -->
+      <div class="diagram-panel">
+        <svg viewBox="0 0 880 220" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+          <!-- Step 1: Packet Arrives -->
+          <rect x="25" y="30" width="160" height="52" rx="6" fill="rgba(255, 42, 133, 0.15)" stroke="#ff2a85" stroke-width="1.8" filter="url(#glow-pink)"/>
+          <text x="40" y="52" fill="#fff" font-size="11" font-weight="800">UDP PACKET ARRIVAL</text>
+          <text x="40" y="68" fill="#ff2a85" font-size="10" class="mono">Port 8888 (Pan, Tilt)</text>
+
+          <!-- Pink Line 1 -> 2 -->
+          <path d="M 185 56 L 235 56" stroke="#ff2a85" stroke-width="2.5" fill="none" filter="url(#glow-pink)" marker-end="url(#arrow-pink)"/>
+
+          <!-- Step 2: Compute Delta -->
+          <rect x="235" y="30" width="170" height="52" rx="6" fill="rgba(255, 214, 0, 0.15)" stroke="#ffd600" stroke-width="1.8" filter="url(#glow-yellow)"/>
+          <text x="250" y="52" fill="#fff" font-size="11" font-weight="800">COMPUTE RAW DELTA</text>
+          <text x="250" y="68" fill="#ffd600" font-size="10" class="mono">&Delta; = Target - Current</text>
+
+          <!-- Pink Line 2 -> Decision Diamond -->
+          <path d="M 405 56 L 465 56" stroke="#ff2a85" stroke-width="2.5" fill="none" filter="url(#glow-pink)" marker-end="url(#arrow-pink)"/>
+
+          <!-- Decision Diamond: Slew Threshold -->
+          <polygon points="535,20 605,56 535,92 465,56" fill="rgba(255, 15, 61, 0.2)" stroke="#ff0f3d" stroke-width="2" filter="url(#glow-red)"/>
+          <text x="500" y="52" fill="#fff" font-size="10" font-weight="800">|&Delta;| &gt; 2.4&deg;?</text>
+          <text x="495" y="66" fill="#ffd600" font-size="9" class="mono">50Hz Velocity</text>
+
+          <!-- Branch YES: Clamp Delta (Pink Line Down) -->
+          <path d="M 535 92 L 535 140" stroke="#ff2a85" stroke-width="2.5" fill="none" filter="url(#glow-pink)" marker-end="url(#arrow-pink)"/>
+          <text x="545" y="115" fill="#ff2a85" font-size="10" font-weight="800" class="mono">YES (Clamp)</text>
+
+          <rect x="445" y="140" width="180" height="48" rx="6" fill="rgba(255, 15, 61, 0.25)" stroke="#ff0f3d" stroke-width="1.8"/>
+          <text x="460" y="162" fill="#fff" font-size="11" font-weight="800">CLAMP TO &plusmn; 2.4&deg;/TICK</text>
+          <text x="460" y="176" fill="#ffd600" font-size="9" class="mono">Current &le; 280mA Safe</text>
+
+          <!-- Branch NO: Direct Step (Pink Line Right) -->
+          <path d="M 605 56 L 685 56" stroke="#ff2a85" stroke-width="2.5" fill="none" filter="url(#glow-pink)" marker-end="url(#arrow-pink)"/>
+          <text x="625" y="48" fill="#ffd600" font-size="10" font-weight="800" class="mono">NO (Pass)</text>
+
+          <!-- Convergence Node: Register Write -->
+          <rect x="685" y="30" width="170" height="52" rx="6" fill="rgba(255, 42, 133, 0.15)" stroke="#ff2a85" stroke-width="1.8"/>
+          <text x="700" y="52" fill="#fff" font-size="11" font-weight="800">14-BIT REGISTER WRITE</text>
+          <text x="700" y="68" fill="#ff2a85" font-size="10" class="mono">LEDC Channels 2 &amp; 3</text>
+
+          <!-- Clamped flow into register write (Pink curved line) -->
+          <path d="M 625 164 L 770 164 L 770 82" stroke="#ff2a85" stroke-width="2.5" fill="none" filter="url(#glow-pink)" marker-end="url(#arrow-pink)"/>
+        </svg>
+        <div class="diagram-caption">Figure 2.1: 50Hz LEDC Hardware Pulse Generation &amp; Slew-Rate Limiter Execution Flowchart</div>
+      </div>
     </section>
 
     <!-- Section 3: Edge AI Vision -->
@@ -1259,7 +1456,7 @@
         High-speed aerial tracking presents extreme challenges for standard video stream ingestion. Standard video capture libraries buffer multiple sequential frames internally. If network jitter delays packet arrival, standard readers deliver frames that are 200 ms to 500 ms stale.
       </p>
 
-      <!-- SVG Ingestion Diagram: Glowing Pink & Yellow -->
+      <!-- SVG Ingestion Diagram: Glowing Pink Flow Lines & Yellow Buffers -->
       <div class="diagram-panel">
         <svg viewBox="0 0 880 260" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
           <!-- Left: Conventional Buffered Stream -->
@@ -1267,9 +1464,17 @@
           <text x="50" y="60" fill="#ff0f3d" font-size="12" font-weight="800" class="mono">CONVENTIONAL STREAM (STALE FIFO)</text>
           
           <rect x="50" y="80" width="55" height="40" rx="4" fill="rgba(255, 15, 61, 0.15)" stroke="#ff0f3d"/><text x="65" y="105" fill="#94a3b8" font-size="10" class="mono">F_t-5</text>
+          <path d="M 105 100 L 115 100" stroke="#ff2a85" stroke-width="2" marker-end="url(#arrow-pink)"/>
+
           <rect x="115" y="80" width="55" height="40" rx="4" fill="rgba(255, 15, 61, 0.15)" stroke="#ff0f3d"/><text x="130" y="105" fill="#94a3b8" font-size="10" class="mono">F_t-4</text>
+          <path d="M 170 100 L 180 100" stroke="#ff2a85" stroke-width="2" marker-end="url(#arrow-pink)"/>
+
           <rect x="180" y="80" width="55" height="40" rx="4" fill="rgba(255, 15, 61, 0.15)" stroke="#ff0f3d"/><text x="195" y="105" fill="#94a3b8" font-size="10" class="mono">F_t-3</text>
+          <path d="M 235 100 L 245 100" stroke="#ff2a85" stroke-width="2" marker-end="url(#arrow-pink)"/>
+
           <rect x="245" y="80" width="55" height="40" rx="4" fill="rgba(255, 15, 61, 0.15)" stroke="#ff0f3d"/><text x="260" y="105" fill="#94a3b8" font-size="10" class="mono">F_t-2</text>
+          <path d="M 300 100 L 310 100" stroke="#ff2a85" stroke-width="2" marker-end="url(#arrow-pink)"/>
+
           <rect x="310" y="80" width="55" height="40" rx="4" fill="#ff0f3d"/><text x="325" y="105" fill="#fff" font-size="10" class="mono">F_t-1</text>
           
           <text x="50" y="150" fill="#ff0f3d" font-size="12" font-weight="700">Socket FIFO Buffer Queue (Stale Frames)</text>
@@ -1280,9 +1485,14 @@
           <rect x="470" y="30" width="380" height="200" rx="8" fill="rgba(16, 12, 18, 0.75)" stroke="#ffd600" stroke-width="1.8" filter="url(#glow-yellow)"/>
           <text x="490" y="60" fill="#ffd600" font-size="12" font-weight="800" class="mono">ZERO-LAG INGESTION ENGINE</text>
 
-          <rect x="490" y="80" width="220" height="45" rx="6" fill="rgba(255, 214, 0, 0.18)" stroke="#ffd600"/>
-          <text x="510" y="102" fill="#fff" font-size="11" font-weight="800" class="mono">ATOMIC FRAME POINTER (RAM)</text>
-          <text x="510" y="116" fill="#ffd600" font-size="10" class="mono">Always Overwritten by Freshest Frame</text>
+          <!-- Socket Ingress to Atomic Pointer (Pink Flow Line) -->
+          <rect x="490" y="80" width="130" height="40" rx="5" fill="rgba(255, 42, 133, 0.15)" stroke="#ff2a85"/>
+          <text x="505" y="104" fill="#ff2a85" font-size="10" font-weight="800" class="mono">Socket Ingest</text>
+
+          <path d="M 620 100 L 660 100" stroke="#ff2a85" stroke-width="2.5" fill="none" filter="url(#glow-pink)" marker-end="url(#arrow-pink)"/>
+
+          <rect x="660" y="80" width="170" height="40" rx="5" fill="rgba(255, 214, 0, 0.2)" stroke="#ffd600" filter="url(#glow-yellow)"/>
+          <text x="675" y="104" fill="#fff" font-size="10" font-weight="800" class="mono">Atomic RAM Pointer</text>
 
           <text x="490" y="150" fill="#ffd600" font-size="12" font-weight="700">Continuous Buffer Drain Thread</text>
           <text x="490" y="172" fill="#94a3b8" font-size="11">Stale intermediary bytes are discarded instantly in memory.</text>
@@ -1341,7 +1551,7 @@
         Agesis EYE implements an **eye-in-hand** kinematic configuration where the optical sensor and weapon emitter are mounted directly onto the pivoting elevation C-arm. The Pan axis and Tilt axis are separated vertically by a mechanical standoff riser of height $d$.
       </p>
 
-      <!-- SVG Kinematics Diagram: Glowing Pink, Electric Yellow & Red -->
+      <!-- SVG Kinematics Diagram: Glowing Pink Connecting Lines & Invariance Vectors -->
       <div class="diagram-panel">
         <svg viewBox="0 0 880 320" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
           <!-- Base Pedestal -->
@@ -1371,8 +1581,8 @@
           <rect x="340" y="60" width="50" height="40" rx="4" fill="rgba(255, 42, 133, 0.25)" stroke="#ff2a85" stroke-width="2"/>
           <text x="345" y="84" fill="#ff2a85" font-size="10" font-weight="800" class="mono">Camera</text>
 
-          <!-- Laser Line of Sight -->
-          <line x1="390" y1="80" x2="720" y2="80" stroke="#ff0f3d" stroke-width="3" stroke-dasharray="6 3" filter="url(#glow-red)"/>
+          <!-- Laser Line of Sight (Glowing Pink Trace) -->
+          <line x1="390" y1="80" x2="720" y2="80" stroke="#ff2a85" stroke-width="3" stroke-dasharray="6 3" filter="url(#glow-pink)" marker-end="url(#arrow-pink)"/>
           <circle cx="720" cy="80" r="16" fill="rgba(255, 15, 61, 0.3)" stroke="#ff0f3d" stroke-width="2"/>
           <text x="750" y="85" fill="#ff0f3d" font-size="12" font-weight="800" class="mono">Target Lock</text>
 
@@ -1427,7 +1637,7 @@
         Unlike disembodied AI models that operate strictly in virtual spaces (such as text models), <strong>Physical AI</strong> embodies perception directly in real physical hardware that must respect motor torque constraints, gear backlash, inertia, and power limits.
       </p>
 
-      <!-- SVG CAD Matching Diagram: Pink & Yellow Accents -->
+      <!-- SVG CAD Matching Diagram: Pink Connecting Flow Pipes -->
       <div class="diagram-panel">
         <svg viewBox="0 0 880 280" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
           <!-- Physical Assembly Render Block -->
@@ -1441,18 +1651,21 @@
           <rect x="130" y="65" width="10" height="25" fill="#ff2a85"/>
           <rect x="145" y="62" width="60" height="28" rx="4" fill="#ff0f3d"/><text x="215" y="80" fill="#fff" font-size="10" class="mono">Red C-Arm</text>
 
+          <!-- Pink Connecting Flow Pipe Between Physical CAD & Digital Twin -->
+          <path d="M 420 140 L 460 140" stroke="#ff2a85" stroke-width="3" fill="none" filter="url(#glow-pink)" marker-end="url(#arrow-pink)"/>
+
           <!-- Right Digital Twin Mirror -->
-          <rect x="460" y="30" width="380" height="220" rx="8" fill="rgba(16, 12, 18, 0.75)" stroke="#ffd600" stroke-width="1.8" filter="url(#glow-yellow)"/>
-          <text x="480" y="58" fill="#ffd600" font-size="12" font-weight="800" class="mono">3D KINEMATIC DIGITAL TWIN</text>
+          <rect x="460" y="25" width="380" height="235" rx="8" fill="rgba(16, 12, 18, 0.75)" stroke="#ffd600" stroke-width="1.8" filter="url(#glow-yellow)"/>
+          <text x="480" y="48" fill="#ffd600" font-size="11" font-weight="800" class="mono">3D KINEMATIC DIGITAL TWIN</text>
 
-          <circle cx="650" cy="140" r="60" fill="none" stroke="#ff0f3d" stroke-width="1.2" stroke-dasharray="4 4"/>
-          <circle cx="650" cy="140" r="35" fill="none" stroke="#ff2a85" stroke-width="1.2" stroke-dasharray="4 4"/>
-          <line x1="580" y1="140" x2="720" y2="140" stroke="rgba(255,15,60,0.4)"/>
-          <line x1="650" y1="70" x2="650" y2="210" stroke="rgba(255,15,60,0.4)"/>
+          <circle cx="650" cy="130" r="60" fill="none" stroke="#ff0f3d" stroke-width="1.2" stroke-dasharray="4 4"/>
+          <circle cx="650" cy="130" r="35" fill="none" stroke="#ff2a85" stroke-width="1.2" stroke-dasharray="4 4"/>
+          <line x1="580" y1="130" x2="720" y2="130" stroke="rgba(255,15,60,0.4)"/>
+          <line x1="650" y1="60" x2="650" y2="200" stroke="rgba(255,15,60,0.4)"/>
 
-          <circle cx="650" cy="140" r="10" fill="#ffd600" filter="url(#glow-yellow)"/>
-          <text x="480" y="216" fill="#ff2a85" font-size="11" class="mono">Real-Time WebSocket State Sync @ 25Hz</text>
-          <text x="480" y="234" fill="#ffd600" font-size="11" class="mono">Thermal Weapon Accumulation &amp; Shrapnel Physics</text>
+          <circle cx="650" cy="130" r="10" fill="#ffd600" filter="url(#glow-yellow)"/>
+          <text x="480" y="210" fill="#ff2a85" font-size="11" class="mono">Real-Time WebSocket State Sync @ 25Hz</text>
+          <text x="480" y="228" fill="#ffd600" font-size="11" class="mono">Thermal Weapon Accumulation &amp; Shrapnel Physics</text>
         </svg>
         <div class="diagram-caption">Figure 5.0: Physical CAD Assembly vs. Real-Time Perspective Digital Twin Engine</div>
       </div>
@@ -1492,7 +1705,7 @@
         The vision intelligence utilizes a customized single-stage detector optimized for high-speed aerial micro-targets (balloons and drones). The neural network pairs a cross-stage partial feature extractor with an anchor-free decoupled detection head.
       </p>
 
-      <!-- SVG Neural Network Diagram: Glowing Pink & Yellow Blocks -->
+      <!-- SVG Neural Network Diagram: Glowing Pink Flow Lines Between Layers -->
       <div class="diagram-panel">
         <svg viewBox="0 0 880 240" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
           <!-- Input -->
@@ -1500,7 +1713,8 @@
           <text x="42" y="115" fill="#fff" font-size="11" font-weight="800">INPUT</text>
           <text x="38" y="132" fill="#ff2a85" font-size="10" class="mono">384x384x3</text>
 
-          <path d="M 120 120 L 160 120" stroke="#ff2a85" stroke-width="2"/>
+          <!-- Pink Flow Line Input -> Backbone -->
+          <path d="M 120 120 L 160 120" stroke="#ff2a85" stroke-width="2.5" fill="none" filter="url(#glow-pink)" marker-end="url(#arrow-pink)"/>
 
           <!-- Backbone -->
           <rect x="160" y="50" width="160" height="140" rx="6" fill="rgba(255, 42, 133, 0.12)" stroke="#ff2a85" stroke-width="1.8"/>
@@ -1509,7 +1723,8 @@
           <rect x="175" y="122" width="130" height="26" rx="4" fill="rgba(255, 42, 133, 0.25)"/><text x="185" y="139" fill="#fff" font-size="10">Cross-Stage Blocks</text>
           <rect x="175" y="154" width="130" height="26" rx="4" fill="rgba(255, 42, 133, 0.25)"/><text x="185" y="171" fill="#fff" font-size="10">SPPF Feature Pool</text>
 
-          <path d="M 320 120 L 360 120" stroke="#ffd600" stroke-width="2"/>
+          <!-- Pink Flow Line Backbone -> Neck -->
+          <path d="M 320 120 L 360 120" stroke="#ff2a85" stroke-width="2.5" fill="none" filter="url(#glow-pink)" marker-end="url(#arrow-pink)"/>
 
           <!-- Neck -->
           <rect x="360" y="50" width="160" height="140" rx="6" fill="rgba(255, 214, 0, 0.12)" stroke="#ffd600" stroke-width="1.8"/>
@@ -1517,7 +1732,8 @@
           <rect x="375" y="95" width="130" height="35" rx="4" fill="rgba(255, 214, 0, 0.2)"/><text x="385" y="117" fill="#ffd600" font-size="10">Top-Down Pyramid</text>
           <rect x="375" y="140" width="130" height="35" rx="4" fill="rgba(255, 214, 0, 0.2)"/><text x="385" y="162" fill="#ffd600" font-size="10">Bottom-Up Path</text>
 
-          <path d="M 520 120 L 560 120" stroke="#ff0f3d" stroke-width="2"/>
+          <!-- Pink Flow Line Neck -> Decoupled Head -->
+          <path d="M 520 120 L 560 120" stroke="#ff2a85" stroke-width="2.5" fill="none" filter="url(#glow-pink)" marker-end="url(#arrow-pink)"/>
 
           <!-- Decoupled Head -->
           <rect x="560" y="50" width="280" height="140" rx="6" fill="rgba(255, 15, 61, 0.15)" stroke="#ff0f3d" stroke-width="1.8"/>
@@ -1570,7 +1786,7 @@
         Operating high-energy electro-optical emitters requires stringent hardware and software fail-safes. The Agesis EYE firmware and ground station enforce a five-stage hardware interlock finite state machine.
       </p>
 
-      <!-- SVG Safety FSM Diagram: Glowing Pink, Yellow & Blood Red -->
+      <!-- SVG Safety FSM Diagram: Glowing Pink Arcs & Transition Paths -->
       <div class="diagram-panel">
         <svg viewBox="0 0 880 200" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
           <!-- State 1: DISARMED -->
@@ -1578,29 +1794,32 @@
           <text x="50" y="96" fill="#94a3b8" font-size="11" font-weight="800" class="mono">STATE 1: SAFE</text>
           <text x="50" y="114" fill="#fff" font-size="12" font-weight="900">DISARMED</text>
 
-          <path d="M 180 100 L 250 100" stroke="#ffd600" stroke-width="2.5" filter="url(#glow-yellow)"/>
+          <!-- Pink Transition Line 1 -> 2 -->
+          <path d="M 180 100 L 250 100" stroke="#ff2a85" stroke-width="2.5" fill="none" filter="url(#glow-pink)" marker-end="url(#arrow-pink)"/>
 
           <!-- State 2: ARMED -->
           <rect x="250" y="70" width="150" height="60" rx="6" fill="rgba(255, 214, 0, 0.18)" stroke="#ffd600" stroke-width="2" filter="url(#glow-yellow)"/>
           <text x="270" y="96" fill="#ffd600" font-size="11" font-weight="800" class="mono">STATE 2: READY</text>
           <text x="270" y="114" fill="#fff" font-size="12" font-weight="900">ARMED</text>
 
-          <path d="M 400 100 L 470 100" stroke="#ff2a85" stroke-width="2.5" filter="url(#glow-pink)"/>
+          <!-- Pink Transition Line 2 -> 3 -->
+          <path d="M 400 100 L 470 100" stroke="#ff2a85" stroke-width="2.5" fill="none" filter="url(#glow-pink)" marker-end="url(#arrow-pink)"/>
 
           <!-- State 3: ACQUIRING -->
           <rect x="470" y="70" width="160" height="60" rx="6" fill="rgba(255, 42, 133, 0.18)" stroke="#ff2a85" stroke-width="2" filter="url(#glow-pink)"/>
           <text x="485" y="96" fill="#ff2a85" font-size="11" font-weight="800" class="mono">STATE 3: LOCKING</text>
           <text x="485" y="114" fill="#fff" font-size="12" font-weight="900">&ge; 3 Hits Confirmed</text>
 
-          <path d="M 630 100 L 700 100" stroke="#ff0f3d" stroke-width="2.5" filter="url(#glow-red)"/>
+          <!-- Pink Transition Line 3 -> 4 -->
+          <path d="M 630 100 L 700 100" stroke="#ff2a85" stroke-width="2.5" fill="none" filter="url(#glow-pink)" marker-end="url(#arrow-pink)"/>
 
           <!-- State 4: ACTIVE FIRING -->
           <rect x="700" y="70" width="150" height="60" rx="6" fill="rgba(255, 15, 61, 0.3)" stroke="#ff0f3d" stroke-width="2.2" filter="url(#glow-red)"/>
           <text x="720" y="96" fill="#ff2a85" font-size="11" font-weight="800" class="mono">STATE 4: ACTIVE</text>
           <text x="720" y="114" fill="#fff" font-size="12" font-weight="900">FIRING BEAM</text>
 
-          <!-- Cutoff Return Path -->
-          <path d="M 775 130 L 775 170 L 325 170 L 325 130" stroke="#ffd600" stroke-width="1.8" stroke-dasharray="5 5" fill="none"/>
+          <!-- Cutoff Return Path (Glowing Pink Dashed Curve) -->
+          <path d="M 775 130 L 775 170 L 325 170 L 325 130" stroke="#ff2a85" stroke-width="2" stroke-dasharray="5 5" fill="none" filter="url(#glow-pink)" marker-end="url(#arrow-pink)"/>
           <text x="410" y="185" fill="#ffd600" font-size="10" class="mono">Auto-Cutoff if Target Lost &gt; 300ms OR Max Duration &gt; 1.5s</text>
         </svg>
         <div class="diagram-caption">Figure 7.0: Five-Stage Failsafe Interlock Finite State Machine Architecture</div>
