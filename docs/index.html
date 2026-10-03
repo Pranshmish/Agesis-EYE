@@ -1,0 +1,1665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agesis EYE: Complete Technical Reference & Engineering Manual</title>
+  <style>
+    :root {
+      --primary: #d9232a;
+      --primary-dark: #9b1419;
+      --primary-light: #ff4d52;
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --code-bg: #1f242c;
+      --accent-blue: #58a6ff;
+      --accent-green: #3fb950;
+      --accent-yellow: #d29922;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.65;
+      color: var(--text);
+      background-color: var(--bg);
+      display: flex;
+    }
+
+    /* Sidebar Table of Contents */
+    #sidebar {
+      width: 320px;
+      height: 100vh;
+      position: sticky;
+      top: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 24px 16px;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .brand-badge {
+      background: var(--primary);
+      color: #fff;
+      font-weight: 800;
+      font-size: 13px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      letter-spacing: 1px;
+    }
+
+    .brand-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .toc-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .toc-list {
+      list-style: none;
+    }
+
+    .toc-item {
+      margin-bottom: 8px;
+    }
+
+    .toc-link {
+      display: block;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 13px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      transition: all 0.15s ease;
+      line-height: 1.4;
+    }
+
+    .toc-link:hover, .toc-link.active {
+      color: #fff;
+      background: rgba(217, 35, 42, 0.15);
+      border-left: 3px solid var(--primary);
+      padding-left: 12px;
+    }
+
+    .actions-bar {
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 8px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 6px;
+      text-decoration: none;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      transition: 0.15s ease;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary-dark);
+    }
+    .btn-primary:hover {
+      background: var(--primary-light);
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--text);
+    }
+    .btn-outline:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    /* Main Content Area */
+    #content {
+      flex: 1;
+      max-width: 980px;
+      padding: 48px 64px 120px;
+      margin: 0 auto;
+    }
+
+    /* Cover / Hero */
+    .hero {
+      padding: 40px 0 60px;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 50px;
+    }
+
+    .hero-badge {
+      display: inline-block;
+      background: rgba(217, 35, 42, 0.15);
+      color: var(--primary-light);
+      border: 1px solid var(--primary);
+      padding: 4px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+    }
+
+    .hero h1 {
+      font-size: 38px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #fff;
+      margin-bottom: 14px;
+      line-height: 1.2;
+    }
+
+    .hero p {
+      font-size: 17px;
+      color: var(--text-muted);
+      max-width: 780px;
+      line-height: 1.6;
+    }
+
+    .meta-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 24px;
+    }
+
+    .pill {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    /* Markdown Elements Styling */
+    h1, h2, h3, h4 {
+      color: #fff;
+      font-weight: 700;
+      line-height: 1.3;
+      margin-top: 36px;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      font-size: 28px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+      margin-top: 60px;
+    }
+
+    h2 {
+      font-size: 22px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      padding-bottom: 6px;
+    }
+
+    h3 {
+      font-size: 17px;
+    }
+
+    p {
+      margin-bottom: 16px;
+      color: #c9d1d9;
+    }
+
+    a {
+      color: var(--accent-blue);
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+
+    ul, ol {
+      margin-bottom: 18px;
+      padding-left: 28px;
+      color: #c9d1d9;
+    }
+
+    li {
+      margin-bottom: 6px;
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0 28px;
+      background: var(--surface);
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    th, td {
+      padding: 12px 16px;
+      text-align: left;
+      font-size: 13.5px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      background: #1c2128;
+      color: #fff;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 12px;
+      letter-spacing: 0.5px;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    /* Code & Fenced Blocks */
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      overflow-x: auto;
+      margin: 18px 0 24px;
+      font-family: "JetBrains Mono", Consolas, Monaco, monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #f0f6fc;
+    }
+
+    code {
+      font-family: "JetBrains Mono", Consolas, Monaco, monospace;
+      font-size: 12.5px;
+      background: rgba(110, 118, 129, 0.2);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #f0883e;
+    }
+
+    pre code {
+      background: transparent;
+      padding: 0;
+      color: inherit;
+    }
+
+    /* Blockquotes / Callouts */
+    blockquote {
+      background: rgba(56, 139, 253, 0.08);
+      border-left: 4px solid var(--accent-blue);
+      padding: 14px 20px;
+      border-radius: 0 8px 8px 0;
+      margin: 20px 0 24px;
+      color: #c9d1d9;
+    }
+
+    blockquote strong {
+      color: #fff;
+    }
+
+    .chapter-divider {
+      margin: 70px 0 40px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), var(--primary), var(--border), transparent);
+    }
+
+    /* Diagram Card Containers */
+    .diagram-card {
+      background: #10151d;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0 28px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12.5px;
+      overflow-x: auto;
+      color: #79c0ff;
+      line-height: 1.4;
+    }
+
+    /* PRINT STYLES FOR CRISP PDF GENERATION */
+    @media print {
+      body {
+        background: #fff !important;
+        color: #111 !important;
+        display: block;
+      }
+      #sidebar {
+        display: none !important;
+      }
+      #content {
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      h1, h2, h3, h4 {
+        color: #000 !important;
+      }
+      h1 {
+        page-break-before: always;
+        margin-top: 30px;
+      }
+      .hero {
+        page-break-after: always;
+        padding-top: 100px;
+        text-align: center;
+      }
+      .hero p {
+        color: #444 !important;
+        margin: 0 auto;
+      }
+      .meta-pills {
+        justify-content: center;
+      }
+      .pill {
+        border-color: #ccc !important;
+        color: #333 !important;
+        background: #f5f5f5 !important;
+      }
+      p, li {
+        color: #222 !important;
+      }
+      table {
+        border-color: #ddd !important;
+        background: #fff !important;
+      }
+      th {
+        background: #f0f0f0 !important;
+        color: #000 !important;
+        border-color: #ccc !important;
+      }
+      td {
+        border-color: #eee !important;
+        color: #222 !important;
+      }
+      pre {
+        background: #f8f8f8 !important;
+        color: #111 !important;
+        border-color: #ddd !important;
+        page-break-inside: avoid;
+      }
+      code {
+        color: #b91c1c !important;
+        background: #f0f0f0 !important;
+      }
+      pre code {
+        color: #111 !important;
+      }
+      blockquote {
+        background: #f0f7ff !important;
+        border-left-color: #0366d6 !important;
+        color: #222 !important;
+      }
+      .chapter-divider {
+        display: none;
+      }
+      .diagram-card {
+        background: #fafafa !important;
+        border-color: #ccc !important;
+        color: #0550ae !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar Navigation -->
+  <aside id="sidebar">
+    <div class="brand">
+      <span class="brand-badge">AGESIS</span>
+      <span class="brand-title">EYE Manual</span>
+    </div>
+
+    <div class="toc-title">Table of Contents</div>
+    <ul class="toc-list">
+      <li class="toc-item"><a class="toc-link" href="#overview">Executive Overview & Technology Curriculum</a></li>
+      <li class="toc-item"><a class="toc-link" href="#01_system_architecture">Chapter 1: System Architecture & End-to-End Integration</a></li>
+      <li class="toc-item"><a class="toc-link" href="#02_embedded_systems_firmware">Chapter 2: Embedded Systems & Firmware Engineering</a></li>
+      <li class="toc-item"><a class="toc-link" href="#03_edge_ai_and_vision_pipeline">Chapter 3: Edge AI & Real-Time Computer Vision Pipeline</a></li>
+      <li class="toc-item"><a class="toc-link" href="#04_robotics_and_kinematics">Chapter 4: Robotics, Kinematics & Visual Servoing</a></li>
+      <li class="toc-item"><a class="toc-link" href="#05_physical_ai_and_digital_twin">Chapter 5: Physical AI & 3D Kinematic Digital Twin</a></li>
+      <li class="toc-item"><a class="toc-link" href="#06_ai_ml_engineering">Chapter 6: AI/ML Engineering & Model Optimization</a></li>
+      <li class="toc-item"><a class="toc-link" href="#07_hardware_assembly_and_wiring">Chapter 7: Hardware Assembly, Wiring & Safety Protocols</a></li>
+    </ul>
+
+    <div class="actions-bar">
+      <a href="Agesis_EYE_Complete_Manual.pdf" download class="btn btn-primary">
+        📥 Download PDF Manual
+      </a>
+      <a href="javascript:window.print()" class="btn btn-outline">
+        🖨️ Print Document
+      </a>
+    </div>
+  </aside>
+
+  <!-- Main Content Area -->
+  <main id="content">
+    <div class="hero">
+      <span class="hero-badge">Engineering Reference Manual</span>
+      <h1>AGESIS EYE</h1>
+      <h2 style="margin-top: 0; font-weight: 500; font-size: 22px; color: var(--primary-light);">
+        Autonomous Vision, Tactical Tracking &amp; Closed-Loop Pan-Tilt Targeting Ground Station
+      </h2>
+      <p>
+        A comprehensive engineering manual covering Edge AI, Robotics, Physical AI, Machine Learning, and Embedded Firmware for autonomous tracking systems.
+      </p>
+
+      <div class="meta-pills">
+        <div class="pill">Edge AI: ONNX 45+ FPS</div>
+        <div class="pill">Robotics: 2-DoF IBVS Kinematics</div>
+        <div class="pill">Embedded: ESP32-CAM 14-bit LEDC</div>
+        <div class="pill">Power: 5V 2A Slew-Rate Protected</div>
+        <div class="pill">Digital Twin: 3D Perspective Canvas</div>
+      </div>
+    </div>
+
+    <section class="chapter-section" id="section-overview">
+<h1 id="overview" id="agesis-eye-complete-technical-reference-curriculum">Agesis EYE: Complete Technical Reference &amp; Curriculum</h1>
+<p>Welcome to the comprehensive technical documentation and engineering curriculum for <strong>Agesis EYE</strong>—an autonomous vision, tactical tracking, and closed-loop pan-tilt targeting station.</p>
+<p>This documentation suite covers every layer of the system: from silicon registers and microsecond PWM pulse trains on the ESP32, to low-latency UDP network sockets, high-throughput ONNX computer vision pipelines, robotic visual servoing kinematics, and modern 3D physics digital twins.</p>
+<hr />
+<h2 id="curriculum-structure">📚 Curriculum Structure</h2>
+<p>The documentation is organized into 7 specialized chapters:</p>
+<ol>
+<li><a href="#01_system_architecture.md"><strong>System Architecture &amp; End-to-End Integration</strong></a></li>
+<li>Architectural topology and subsystem breakdown</li>
+<li>End-to-end telemetry and command lifecycle</li>
+<li>
+<p>Latency budget breakdown across all communication boundaries</p>
+</li>
+<li>
+<p><a href="#02_embedded_systems_firmware.md"><strong>Embedded Systems &amp; Firmware Engineering</strong></a></p>
+</li>
+<li>ESP32-CAM (AI-Thinker) architecture and GPIO allocation</li>
+<li>LEDC 14-bit timer PWM generation for SG90 micro-servos</li>
+<li>5V 2A power rail budget and transient inrush suppression</li>
+<li>Brownout register manipulation (<code>RTC_CNTL_BROWN_OUT_REG</code>)</li>
+<li>
+<p>FreeRTOS cooperative scheduling and multi-protocol listeners (UDP 8888 + HTTP 81 + UART)</p>
+</li>
+<li>
+<p><a href="#03_edge_ai_and_vision_pipeline.md"><strong>Edge AI &amp; Real-Time Computer Vision Pipeline</strong></a></p>
+</li>
+<li>Decoupled Zero-Lag streaming reader vs. standard buffer stalls</li>
+<li>ONNX Runtime execution provider optimization (45+ FPS CPU)</li>
+<li>Edge contrast enhancement with domain-specific EP-CLAHE</li>
+<li>
+<p>Bounding box extraction, confidence thresholding, and center-offset normalization</p>
+</li>
+<li>
+<p><a href="#04_robotics_and_kinematics.md"><strong>Robotics, Kinematics &amp; Visual Servoing</strong></a></p>
+</li>
+<li>2-DoF Pan-Tilt spherical coordinate transformations</li>
+<li>Mathematical proof of inter-servo distance $d$ invariance</li>
+<li>Image-Based Visual Servoing (IBVS) error dynamics</li>
+<li>
+<p>S-curve trajectory profiling and slew-rate acceleration limiting</p>
+</li>
+<li>
+<p><a href="#05_physical_ai_and_digital_twin.md"><strong>Physical AI &amp; 3D Kinematic Digital Twin</strong></a></p>
+</li>
+<li>Bridging perception models to physical mechanical action</li>
+<li>Browser-based 3D projection engine (trigonometric rotation matrix)</li>
+<li>Tinkercad CAD mechanical assembly matching (base, pedestal, servos, C-arm)</li>
+<li>
+<p>Real-time thermal load accumulation, shrapnel explosion physics, and respawn cycle</p>
+</li>
+<li>
+<p><a href="#06_ai_ml_engineering.md"><strong>AI/ML Engineering &amp; Model Optimization</strong></a></p>
+</li>
+<li>YOLO architecture adaptation for aerial balloon and target tracking</li>
+<li>Dataset curation, augmentation techniques, and synthetic data injection</li>
+<li>Quantization, pruning, and PyTorch $\to$ ONNX conversion pipeline</li>
+<li>
+<p>Evaluation metrics: IoU, mAP@0.5, inference throughput vs. precision trade-offs</p>
+</li>
+<li>
+<p><a href="#07_hardware_assembly_and_wiring.md"><strong>Hardware Assembly, Wiring &amp; Safety Protocols</strong></a></p>
+</li>
+<li>Step-by-step physical build guide based on Tinkercad CAD models</li>
+<li>Complete schematic diagram and Bill of Materials (BOM)</li>
+<li>Laser safety interlock state machine and optical radiation hazards</li>
+</ol>
+<hr />
+<h2 id="technology-domain-coverage">🎯 Technology Domain Coverage</h2>
+<div class="diagram-card"><pre>graph TD
+    subgraph "Embedded Systems"
+        E1[ESP32-CAM MCU] --> E2[LEDC 14-bit PWM Timers]
+        E1 --> E3[Brownout Suppression]
+        E1 --> E4[UDP/HTTP Dual Stack]
+    end
+
+    subgraph "Edge AI & Vision"
+        V1[OV2640 Sensor] --> V2[Zero-Lag Stream Reader]
+        V2 --> V3[EP-CLAHE Preprocessor]
+        V3 --> V4[ONNX Runtime 45+ FPS]
+    end
+
+    subgraph "Robotics & Controls"
+        R1[Image-Based Visual Servoing] --> R2[d-Invariant Kinematics]
+        R2 --> R3[Slew-Rate Limiter]
+        R3 --> R4[SG90 Pan-Tilt Actuation]
+    end
+
+    subgraph "Physical AI & Digital Twin"
+        P1[Closed-Loop State Estimation] --> P2[3D Mechanical Twin]
+        P2 --> P3[Thermal Attack Modeling]
+        P3 --> P4[Shrapnel Burst Physics]
+    end
+
+    E1 <--> |Wi-Fi LAN / Sub-ms UDP| V2
+    V4 --> R1
+    R4 --> E2
+    R1 --> P1</pre></div>
+
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Domain</th>
+<th style="text-align: left;">How It Is Addressed in Agesis EYE</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Embedded Systems</strong></td>
+<td style="text-align: left;">Bare-metal register manipulation, ESP32 memory mapping, PSRAM double-buffering, PWM timer tick calculations, and power surge mitigation.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Edge AI</strong></td>
+<td style="text-align: left;">Deploying quantized neural networks to local CPU/edge runtimes, achieving sub-15ms inference latency without cloud dependencies.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Robotics</strong></td>
+<td style="text-align: left;">Forward/inverse kinematics, 2-DoF actuation, proportional-integral-derivative servoing, and geometric parallax compensation.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Physical AI</strong></td>
+<td style="text-align: left;">Autonomous closed-loop feedback systems where sensory inputs immediately translate into physical mechanical actuation and safety boundaries.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>AI / ML</strong></td>
+<td style="text-align: left;">Deep convolutional neural network training, post-training optimization, anchor tuning, non-maximum suppression, and real-time inferencing.</td>
+</tr>
+</tbody>
+</table>
+</section>
+<div class="chapter-divider"></div>
+<section class="chapter-section" id="section-01_system_architecture">
+<h1 id="01_system_architecture" id="chapter-1-system-architecture-end-to-end-integration">Chapter 1: System Architecture &amp; End-to-End Integration</h1>
+<p>Agesis EYE is engineered as a distributed, real-time autonomous system. It bridges low-power microcontrollers, high-speed neural networks, and interactive browser-based tactical command interfaces.</p>
+<hr />
+<h2 id="1-high-level-topological-overview">1. High-Level Topological Overview</h2>
+<p>The system is decomposed into three primary physical and logical tiers:</p>
+<div class="diagram-card"><pre>flowchart TB
+    subgraph EdgeNode["1. Hardware Edge Node (ESP32-CAM)"]
+        CAM["OV2640 Sensor\n(QVGA 320x240 @ 30 FPS)"]
+        MCU["ESP32 Dual-Core Xtensa LX6\n(Brownout Protection & Slew Engine)"]
+        PWM_P["Pan Servo (IO12)\nSG90 (360°/180°)"]
+        PWM_T["Tilt Servo (IO13)\nSG90 (180°)"]
+        LASER["Laser Emitter (IO14)\nOptical Target Beam"]
+        CAM -->|DRAM/PSRAM DMA| MCU
+        MCU --> PWM_P
+        MCU --> PWM_T
+        MCU --> LASER
+    end
+
+    subgraph Network["2. Local Network Backbone (Wi-Fi 802.11 b/g/n)"]
+        STREAM["MJPEG Stream HTTP :81/stream"]
+        UDP_PIPE["High-Speed UDP Commands :8888\nP:<pan>,T:<tilt>,L:<laser>"]
+        HTTP_API["REST Fallback :81/servo"]
+    end
+
+    subgraph GroundStation["3. Ground AI & Control Station (Host PC)"]
+        ZR["ZeroLagStreamReader\n(Buffer-Draining Daemon)"]
+        ONNX_ENG["ONNX Runtime Engine\n(agesis06.onnx @ 45+ FPS)"]
+        KIN["TurretController\n(d-Invariant Kinematics & Interlocks)"]
+        FAST_API["FastAPI Web Server :8000"]
+
+        ZR --> ONNX_ENG
+        ONNX_ENG -->|Error (dx, dy)| KIN
+        KIN -->|UDP Datagrams| UDP_PIPE
+    end
+
+    subgraph OperatorHUD["4. Operator Station & Digital Twin (Browser)"]
+        UI["Tactical React HUD (Vite :5173 / :8000)"]
+        TWIN["3D Kinematic Digital Twin\n(Tinkercad CAD Matching + Burst Physics)"]
+        WS["WebSocket Telemetry Stream\n(/ws/telemetry @ 25 Hz)"]
+
+        FAST_API -->|HUD State| WS
+        WS --> UI
+        UI --> TWIN
+    end
+
+    MCU -->|HTTP MJPEG| STREAM
+    STREAM --> ZR
+    UDP_PIPE --> MCU
+    HTTP_API --> MCU</pre></div>
+
+<hr />
+<h2 id="2-subsystem-breakdown">2. Subsystem Breakdown</h2>
+<h3 id="tier-1-hardware-edge-node-esp32-cam">Tier 1: Hardware Edge Node (ESP32-CAM)</h3>
+<ul>
+<li><strong>Processor</strong>: ESP32-D0WDQ6-V3 dual-core 32-bit Xtensa LX6 running at 240 MHz.</li>
+<li><strong>Camera Module</strong>: OmniVision OV2640 2-Megapixel CMOS sensor configured in QVGA mode ($320 \times 240$) with hardware JPEG compression.</li>
+<li><strong>Actuation</strong>: Dual SG90 micro-servos driven by hardware LEDC PWM timers at 50 Hz with 14-bit resolution.</li>
+<li><strong>Firmware Responsibilities</strong>:</li>
+<li>Capture JPEG frames and stream them over HTTP port <code>81</code> using multipart boundary chunks.</li>
+<li>Listen asynchronously on UDP port <code>8888</code> for targeting packets.</li>
+<li>Execute 50 Hz motion smoothing (slew-rate limiter) to prevent inrush current spikes on the 5V 2A adapter.</li>
+</ul>
+<h3 id="tier-2-ground-ai-inference-kinematics-engine-python-fastapi">Tier 2: Ground AI Inference &amp; Kinematics Engine (Python / FastAPI)</h3>
+<ul>
+<li><strong>Zero-Lag Ingestion</strong>: A dedicated thread drains the incoming MJPEG socket continuously, discarding stale buffered frames to ensure the vision model always processes the absolute freshest image available ($&lt;2\text{ms}$ ingestion latency).</li>
+<li><strong>Neural Vision Core</strong>: Executes <code>agesis06.onnx</code> via the ONNX Runtime execution provider, utilizing multi-threaded CPU SIMD instructions to achieve $&gt;45\text{ FPS}$.</li>
+<li><strong>Closed-Loop Servoing</strong>: Computes image-space tracking deltas $(\Delta x, \Delta y)$ and translates them into angular corrections via Image-Based Visual Servoing (IBVS).</li>
+<li><strong>Kinematics Engine</strong>: Mathematically normalizes the vertical inter-servo separation distance $d$, decoupling physical mount geometry from tracking stability.</li>
+</ul>
+<h3 id="tier-3-tactical-ground-station-hud-digital-twin-react-vite">Tier 3: Tactical Ground Station HUD &amp; Digital Twin (React / Vite)</h3>
+<ul>
+<li><strong>Real-Time Telemetry Pipeline</strong>: Subscribes to <code>/ws/telemetry</code> over WebSocket at 25 Hz, updating dials, coordinate reticles, and lock streaks.</li>
+<li><strong>3D Perspective Digital Twin</strong>: Replicates the physical Tinkercad CAD mechanical assembly in real-time, allowing operators to visualize line-of-sight pointing, test synthetic flight paths, adjust standoff height $d$, and observe target destruction dynamics.</li>
+</ul>
+<hr />
+<h2 id="3-end-to-end-latency-budget">3. End-to-End Latency Budget</h2>
+<p>To maintain closed-loop tracking stability on high-speed targets (such as swaying balloons or drones), total system latency from optical capture to physical servo movement must remain strictly below $50\text{ ms}$.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Stage</th>
+<th style="text-align: left;">Subsystem</th>
+<th style="text-align: left;">Latency (Typical)</th>
+<th style="text-align: left;">Optimization Technique</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>1. Sensor Exposure &amp; Readout</strong></td>
+<td style="text-align: left;">OV2640 Sensor</td>
+<td style="text-align: left;">$12.0\text{ ms}$</td>
+<td style="text-align: left;">QVGA resolution ($320\times 240$), high-gain AGC ceiling</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>2. JPEG Compression</strong></td>
+<td style="text-align: left;">ESP32 Hardware</td>
+<td style="text-align: left;">$4.5\text{ ms}$</td>
+<td style="text-align: left;">Hardware JPEG engine, quality factor $14$</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>3. Wi-Fi Packet Transmission</strong></td>
+<td style="text-align: left;">802.11b/g/n LAN</td>
+<td style="text-align: left;">$3.5\text{ ms}$</td>
+<td style="text-align: left;">TCP_NODELAY, direct socket streaming</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>4. Ingestion &amp; JPEG Decode</strong></td>
+<td style="text-align: left;"><code>ZeroLagStreamReader</code></td>
+<td style="text-align: left;">$1.8\text{ ms}$</td>
+<td style="text-align: left;">Buffer draining thread, OpenCV fast turbo-JPEG</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>5. Domain Preprocessing</strong></td>
+<td style="text-align: left;">EP-CLAHE Transform</td>
+<td style="text-align: left;">$1.2\text{ ms}$</td>
+<td style="text-align: left;">Vectorized NumPy tile contrast equalization</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>6. Neural Network Inference</strong></td>
+<td style="text-align: left;">ONNX Runtime</td>
+<td style="text-align: left;">$14.5\text{ ms}$</td>
+<td style="text-align: left;">Quantized weights, CPU multi-threading ($4$ threads)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>7. Kinematics &amp; PID Solvers</strong></td>
+<td style="text-align: left;"><code>TurretController</code></td>
+<td style="text-align: left;">$0.2\text{ ms}$</td>
+<td style="text-align: left;">Analytical IBVS equations, $O(1)$ complexity</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>8. UDP Command Dispatch</strong></td>
+<td style="text-align: left;">Network Socket</td>
+<td style="text-align: left;">$0.6\text{ ms}$</td>
+<td style="text-align: left;">Raw UDP datagram, port $8888$, zero handshake</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>9. ESP32 Parsing &amp; PWM Update</strong></td>
+<td style="text-align: left;">ESP32 LEDC Driver</td>
+<td style="text-align: left;">$0.4\text{ ms}$</td>
+<td style="text-align: left;">In-place C string pointer parsing</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>10. SG90 Mechanical Response</strong></td>
+<td style="text-align: left;">Micro-Servo Gearbox</td>
+<td style="text-align: left;">$10.0\text{ ms}$</td>
+<td style="text-align: left;">Slew-rate smoothed step to eliminate inrush current</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Total Closed-Loop Latency</strong></td>
+<td style="text-align: left;"><strong>End-to-End</strong></td>
+<td style="text-align: left;"><strong>$\approx 48.7\text{ ms}$</strong></td>
+<td style="text-align: left;"><strong>Sub-50ms deterministic tracking</strong></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="4-network-protocol-topology">4. Network Protocol Topology</h2>
+<pre><code>                  +-----------------------------------------+
+                  |            ESP32 Edge Node              |
+                  |             (10.96.117.X)               |
+                  +--------------------+--------------------+
+                                       |
+                   HTTP :81/stream     |    UDP :8888 (Commands)
+                   (MJPEG 30 FPS)      |    (Sub-ms latency)
+                                       v
+                  +--------------------+--------------------+
+                  |       Ground Station (127.0.0.1)        |
+                  |                                         |
+                  |  - Port 8000: FastAPI Backend / Stream  |
+                  |  - Port 5173: Vite Development Server   |
+                  |  - Port 8888: Outbound UDP Dispatch     |
+                  +-----------------------------------------+
+</code></pre>
+<ol>
+<li><strong>Video Stream</strong>: Standard HTTP GET on port <code>81</code> serving <code>multipart/x-mixed-replace;boundary=...</code>.</li>
+<li><strong>Servo &amp; Laser Commands</strong>: High-speed UDP datagrams sent to destination port <code>8888</code>. Each packet is an ASCII payload:<br />
+<code>P:&lt;pan_angle&gt;,T:&lt;tilt_angle&gt;,L:&lt;laser_bool&gt;\n</code><br />
+<em>Example</em>: <code>P:94.2,T:87.5,L:1\n</code></li>
+<li><strong>Telemetry WebSocket</strong>: Bidirectional JSON socket at <code>ws://127.0.0.1:8000/ws/telemetry</code> streaming camera FPS, tracking latency, servo coordinates, and safety states.</li>
+</ol>
+</section>
+<div class="chapter-divider"></div>
+<section class="chapter-section" id="section-02_embedded_systems_firmware">
+<h1 id="02_embedded_systems_firmware" id="chapter-2-embedded-systems-firmware-engineering">Chapter 2: Embedded Systems &amp; Firmware Engineering</h1>
+<p>The embedded tier of Agesis EYE transforms an ultra-low-cost, resource-constrained <strong>ESP32-CAM</strong> development board into an autonomous dual-axis vision and targeting node.</p>
+<p>This chapter details the bare-metal microcontroller configuration, peripheral pin allocation, high-precision PWM timing calculations, power budgeting, and communication engines implemented in <a href="file:///c:/Users/ASUS/Desktop/Agesis%20EYE/firmware/esp32_cam_stream/esp32_cam_stream.ino">esp32_cam_stream.ino</a>.</p>
+<hr />
+<h2 id="1-hardware-platform-esp32-cam-ai-thinker">1. Hardware Platform: ESP32-CAM (AI-Thinker)</h2>
+<p>The AI-Thinker ESP32-CAM integrates an <strong>ESP32-D0WDQ6-V3</strong> SoC with an external <strong>4MB PSRAM</strong> chip and an OV2640 camera connector.</p>
+<pre><code>       +---------------------------------------------+
+       |             AI-THINKER ESP32-CAM            |
+       |                                             |
+       |  [ OV2640 Camera ]        [ Flash LED IO4 ] |
+       |                                             |
+       |  IO12  [ Pan PWM (LEDC CH2) ]               |
+       |  IO13  [ Tilt PWM (LEDC CH3) ]              |
+       |  IO14  [ Laser Diode Trigger ]              |
+       |                                             |
+       |  5V    [ 5V 2A Adapter Input ]              |
+       |  GND   [ Common Ground ]                    |
+       |  U0TXD [ Serial Debug 115200 ]              |
+       |  U0RXD [ Serial Command In ]                |
+       +---------------------------------------------+
+</code></pre>
+<h3 id="critical-gpio-allocation-constraints">Critical GPIO Allocation Constraints</h3>
+<p>Selecting GPIO pins on the ESP32-CAM is notoriously difficult because nearly all pins are routed internally to the camera sensor bus or flash memory:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">GPIO</th>
+<th style="text-align: left;">Internal Assignment</th>
+<th style="text-align: left;">Turret Usage</th>
+<th style="text-align: left;">Why Selected / Precautions</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>GPIO 12</strong></td>
+<td style="text-align: left;">HSPI MISO / SD Card Data 2</td>
+<td style="text-align: left;"><strong>Pan Servo PWM</strong></td>
+<td style="text-align: left;">Free when SD card is disabled. Can output clean LEDC PWM.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>GPIO 13</strong></td>
+<td style="text-align: left;">HSPI MOSI / SD Card Data 3</td>
+<td style="text-align: left;"><strong>Tilt Servo PWM</strong></td>
+<td style="text-align: left;">Free when SD card is disabled. Dedicated to elevation servo.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>GPIO 14</strong></td>
+<td style="text-align: left;">HSPI CLK / SD Card CLK</td>
+<td style="text-align: left;"><strong>Laser Diode Trigger</strong></td>
+<td style="text-align: left;">Digital output to MOSFET or direct laser cathode driver.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>GPIO 4</strong></td>
+<td style="text-align: left;">Built-in Flash LED</td>
+<td style="text-align: left;">Status Indication</td>
+<td style="text-align: left;">Kept LOW during tracking to prevent sensor oversaturation.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>GPIO 16</strong></td>
+<td style="text-align: left;"><strong>PSRAM Chip Select</strong></td>
+<td style="text-align: left;"><strong>DO NOT USE</strong></td>
+<td style="text-align: left;">Reserved for external PSRAM. Toggling this pin crashes the system!</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>GPIO 0</strong></td>
+<td style="text-align: left;">Camera XCLK / Boot Mode</td>
+<td style="text-align: left;">Reserved</td>
+<td style="text-align: left;">Strapping pin. Toggling during boot forces flash download mode.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="2-sg90-micro-servo-pwm-generation-ledc-driver">2. SG90 Micro-Servo PWM Generation (LEDC Driver)</h2>
+<p>Standard RC hobby servos require a $50\text{ Hz}$ PWM signal (a $20\text{ ms}$ repetition period) where the pulse width dictates the shaft angle:<br />
+* <strong>$1.0\text{ ms}$ ($1000\,\mu\text{s}$)</strong>: $0^\circ$ (Minimum limit)<br />
+* <strong>$1.5\text{ ms}$ ($1500\,\mu\text{s}$)</strong>: $90^\circ$ (Neutral center)<br />
+* <strong>$2.0\text{ ms}$ ($2000\,\mu\text{s}$)</strong>: $180^\circ$ (Maximum limit)</p>
+<p><em>(Note: TowerPro SG90 servos typically support an extended travel range from $544\,\mu\text{s}$ to $2400\,\mu\text{s}$).</em></p>
+<h3 id="timer-math-duty-cycle-resolution">Timer Math &amp; Duty Cycle Resolution</h3>
+<p>Rather than relying on blocking delay loops, the firmware configures the ESP32’s native <strong>LEDC (LED Control) hardware PWM generator</strong>:</p>
+<ol>
+<li><strong>Timer Configuration</strong>:</li>
+<li>PWM Frequency $f_{\text{pwm}} = 50\text{ Hz}$</li>
+<li>Period $T = \frac{1}{50\text{ Hz}} = 0.02\text{ s} = 20,000\,\mu\text{s}$</li>
+<li>Timer Resolution = $14\text{-bit}$ ($2^{14} = 16,384$ discrete counts)</li>
+<li><strong>Duty Cycle Formula</strong>:<br />
+   $$\text{Duty Ticks} = \left(\frac{\text{Pulse Width } (\mu\text{s})}{20,000\,\mu\text{s}}\right) \times 16,383$$</li>
+<li><strong>Pulse Width Mapping</strong>:<br />
+   $$\text{Pulse Width}(\theta) = 544\,\mu\text{s} + \left(\frac{\theta}{180^\circ}\right) \times (2400\,\mu\text{s} - 544\,\mu\text{s})$$</li>
+</ol>
+<pre><code class="language-cpp">uint32_t angleToDuty(float angle) {
+    angle = constrain(angle, 0.0f, 180.0f);
+    float us = SERVO_MIN_US + (angle / 180.0f) * (SERVO_MAX_US - SERVO_MIN_US);
+    return (uint32_t)((us / 20000.0f) * 16383.0f);
+}
+</code></pre>
+<p>This yields a resolution of $\approx 0.013^\circ$ per tick, ensuring smooth movement without visible stepping.</p>
+<h3 id="continuous-360-servo-mode">Continuous 360° Servo Mode</h3>
+<p>For continuous-rotation SG90 servos, the pulse width dictates angular velocity and direction rather than position:<br />
+* $1500\,\mu\text{s}$: Stop ($0\text{ RPM}$)<br />
+* $&lt;1500\,\mu\text{s}$: Clockwise rotation (speed proportional to $|1500 - \mu\text{s}|$)<br />
+* $&gt;1500\,\mu\text{s}$: Counter-clockwise rotation</p>
+<p>The firmware provides a single compile-time toggle <code>#define SERVO_360_PAN_MODE true</code> to adapt between standard and continuous variants.</p>
+<hr />
+<h2 id="3-power-budgeting-inrush-slew-rate-limiting">3. Power Budgeting &amp; Inrush Slew-Rate Limiting</h2>
+<h3 id="the-5v-2a-shared-power-supply-problem">The 5V 2A Shared Power Supply Problem</h3>
+<p>Both the ESP32 and the two SG90 servos draw power from a single 5V 2A wall adapter:<br />
+* <strong>ESP32 Wi-Fi Radio</strong>: Consumes $\approx 180\text{ mA}$ continuous, spiking to $350\text{--}400\text{ mA}$ during RF transmissions.<br />
+* <strong>SG90 Micro-Servos</strong>: Consume $\approx 150\text{ mA}$ during steady rotation, but <strong>stall/inrush current spikes to $650\text{--}800\text{ mA}$ per servo</strong> when accelerating instantaneously from rest.</p>
+<p>$$\text{Worst-Case Peak} = 400\text{ mA} + 800\text{ mA} + 800\text{ mA} = 2,000\text{ mA} \quad (2.0\text{ A})$$</p>
+<p>If both servos step abruptly, the 5V rail sags below $4.4\text{ V}$. This triggers the ESP32's internal brownout detector, causing continuous reset loops.</p>
+<h3 id="the-two-fold-solution">The Two-Fold Solution</h3>
+<h4 id="1-hardware-slew-rate-limiting-soft-acceleration">1. Hardware Slew-Rate Limiting (Soft Acceleration)</h4>
+<p>Instead of slamming the PWM duty cycle to the target angle in a single step, the firmware runs a $50\text{ Hz}$ smoothing filter:</p>
+<pre><code class="language-cpp">if (now - lastServoUpdateMs &gt;= 20) {
+    lastServoUpdateMs = now;
+
+    // Pan axis smooth slew (Max 2.4 degrees per 20ms = 120 deg/sec)
+    float dPan = targetPanAngle - currentPanAngle;
+    if (abs(dPan) &gt; MAX_SLEW_STEP_DEG) {
+        currentPanAngle += (dPan &gt; 0) ? MAX_SLEW_STEP_DEG : -MAX_SLEW_STEP_DEG;
+    } else {
+        currentPanAngle = targetPanAngle;
+    }
+
+    applyServoDuty();
+}
+</code></pre>
+<p>By capping angular acceleration, the motor never operates in the dead-stall regime, keeping peak currents below $350\text{ mA}$ per servo and protecting the 5V rail.</p>
+<h4 id="2-bare-metal-brownout-override">2. Bare-Metal Brownout Override</h4>
+<p>At the very beginning of <code>setup()</code>, the brownout detector is disabled to tolerate transient voltage dips:</p>
+<pre><code class="language-cpp">#include &quot;soc/soc.h&quot;
+#include &quot;soc/rtc_cntl_reg.h&quot;
+
+void setup() {
+    WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); // Disable brownout reset
+    ...
+}
+</code></pre>
+<hr />
+<h2 id="4-multi-protocol-command-interface">4. Multi-Protocol Command Interface</h2>
+<p>To guarantee flexibility and reliability, the firmware implements three concurrent command listeners:</p>
+<div class="diagram-card"><pre>graph LR
+    A[Ground Station] -->|Port 8888 Sub-ms| UDP[UDP Listener]
+    A -->|Port 81 REST| HTTP[HTTP /servo Endpoint]
+    A -->|USB UART 115200| SER[Serial CLI]
+    UDP --> PARSER[parseCommand]
+    HTTP --> PARSER
+    SER --> PARSER
+    PARSER --> SLEW[Slew-Rate Engine]
+    SLEW --> LEDC[LEDC PWM Hardware]</pre></div>
+
+<ol>
+<li><strong>High-Speed UDP Listener (Port 8888)</strong>:</li>
+<li>Non-blocking socket listener via <code>WiFiUDP</code>.</li>
+<li>Directly parses ASCII strings formatted as <code>P:&lt;pan&gt;,T:&lt;tilt&gt;,L:&lt;laser&gt;</code>.</li>
+<li>Transit time is $&lt;0.5\text{ ms}$, bypassing HTTP handshake and TCP congestion back-off.</li>
+<li><strong>REST Endpoint (Port 81)</strong>:</li>
+<li>Accessible via <code>GET /servo?pan=90&amp;tilt=90&amp;laser=1</code>.</li>
+<li>Returns a JSON confirmation status payload. Useful for browser debugging.</li>
+<li><strong>Serial Terminal (UART0 @ 115200 baud)</strong>:</li>
+<li>Accepts commands directly over USB (<code>P90 T90 L0\n</code>).</li>
+</ol>
+</section>
+<div class="chapter-divider"></div>
+<section class="chapter-section" id="section-03_edge_ai_and_vision_pipeline">
+<h1 id="03_edge_ai_and_vision_pipeline" id="chapter-3-edge-ai-real-time-computer-vision-pipeline">Chapter 3: Edge AI &amp; Real-Time Computer Vision Pipeline</h1>
+<p>The perception engine of Agesis EYE is an optimized, edge-capable computer vision system capable of tracking high-speed airborne targets with sub-$15\text{ ms}$ inference latencies.</p>
+<p>This chapter details the decoupled video acquisition architecture, image preprocessing algorithms, ONNX model execution, and target state estimation implemented in <a href="file:///c:/Users/ASUS/Desktop/Agesis%20EYE/backend/tracker.py">tracker.py</a>.</p>
+<hr />
+<h2 id="1-why-edge-ai-matters-for-autonomous-defense">1. Why Edge AI Matters for Autonomous Defense</h2>
+<p>Cloud-based vision processing suffers from round-trip network jitter ($150\text{--}500\text{ ms}$), bandwidth saturation, and connection dropouts. In physical robotics, a lag of even $100\text{ ms}$ causes control instability, overshoot, and lost target locks.</p>
+<p>Agesis EYE performs <strong>100% on-device local edge inference</strong>:<br />
+* <strong>Zero Cloud Dependency</strong>: Runs entirely on the host ground station CPU/GPU.<br />
+* <strong>Deterministic Timing</strong>: Frame acquisition to servo output occurs in $&lt;50\text{ ms}$.<br />
+* <strong>Ultra-Low Bandwidth</strong>: Raw video stays on the local subnet; only lightweight telemetry is transmitted across software components.</p>
+<hr />
+<h2 id="2-the-zero-lag-video-acquisition-problem">2. The Zero-Lag Video Acquisition Problem</h2>
+<p>When reading MJPEG network streams using standard library functions like OpenCV's <code>cv2.VideoCapture("http://...")</code>, internal operating system buffers automatically queue frames. If network transmission slows down momentarily, the socket fills with 5 to 10 stale frames.</p>
+<p>As a result, OpenCV serves frames that were captured <strong>200 to 500 ms in the past</strong>. A tracking turret operating on stale frames will steer toward where the target <em>used to be</em>, causing violent oscillations.</p>
+<h3 id="the-zerolagstreamreader-architecture">The <code>ZeroLagStreamReader</code> Architecture</h3>
+<p>To eliminate buffering latency, Agesis EYE uses a dedicated daemon worker that continuously consumes bytes from the HTTP socket and immediately overwrites a single memory reference:</p>
+<div class="diagram-card"><pre>sequenceDiagram
+    participant ESP as ESP32-CAM (Port 81)
+    participant Worker as StreamReader Thread
+    participant Mem as latest_frame (RAM)
+    participant AI as AI Inference Loop
+
+    ESP->>Worker: MJPEG Chunk 1
+    Worker->>Mem: Write Frame 1 (Fresh)
+    ESP->>Worker: MJPEG Chunk 2
+    Worker->>Mem: Overwrite Frame 2 (Drop Frame 1)
+    ESP->>Worker: MJPEG Chunk 3
+    Worker->>Mem: Overwrite Frame 3 (Drop Frame 2)
+    Note over AI,Mem: AI requests frame: Instantly gets Frame 3 (< 1ms old!)
+    AI->>Mem: get_latest()
+    Mem-->>AI: Frame 3</pre></div>
+
+<pre><code class="language-python"># Extract from tracker.py
+while self.running:
+    # Read chunk until JPEG end marker b'\xff\xd9'
+    idx = buffer.find(b&quot;\xff\xd9&quot;)
+    if idx != -1:
+        jpg_bytes = buffer[:idx+2]
+        buffer = buffer[idx+2:]
+        frame = cv2.imdecode(np.frombuffer(jpg_bytes, np.uint8), cv2.IMREAD_COLOR)
+        if frame is not None:
+            with self.lock:
+                self.latest_frame = frame  # Atomically overwrite stale frame
+</code></pre>
+<p>This guarantees that whenever the AI pipeline finishes an inference cycle, the next frame it pulls is the freshest image available ($&lt;2\text{ ms}$ latency).</p>
+<hr />
+<h2 id="3-onnx-runtime-engine-high-performance-cpu-inference">3. ONNX Runtime Engine (High-Performance CPU Inference)</h2>
+<p>While native PyTorch (<code>.pt</code>) models are flexible for training, they carry heavy runtime overhead from dynamic Python execution and memory allocation.</p>
+<p>For deployment, Agesis EYE executes <strong><code>agesis06.onnx</code></strong> via Microsoft's <strong>ONNX Runtime (ORT)</strong> engine:<br />
+1. <strong>Operator Fusion</strong>: Conv2D, Batch Normalization, and LeakyReLU layers are fused into single SIMD kernel calls.<br />
+2. <strong>Multi-Threaded Execution</strong>: Tuned with <code>torch.set_num_threads(4)</code> and native CPU thread pools to utilize AVX2/AVX-512 vector instructions.<br />
+3. <strong>Throughput</strong>: Achieves <strong>45+ FPS</strong> on standard consumer CPUs, eliminating the need for dedicated discrete GPUs.</p>
+<hr />
+<h2 id="4-optical-preprocessing-domain-transformation-ep-clahe">4. Optical Preprocessing &amp; Domain Transformation (EP-CLAHE)</h2>
+<p>In tactical outdoor environments, balloons and drones often face extreme backlight, lens flare, or heavy shadows.</p>
+<p>To enhance detection sensitivity on low-contrast targets without increasing noise, the system includes an <strong>Edge-Preserving Contrast Limited Adaptive Histogram Equalization (EP-CLAHE)</strong> filter:</p>
+<p>$$\text{CLAHE}(I) = \text{BilinearInterpolation}\left(\text{LocalHistEqualization}(I_{\text{tile}})\right)$$</p>
+<pre><code class="language-python">def apply_ep_clahe(img):
+    # Convert BGR to Lab color space
+    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+    l, a, b = cv2.split(lab)
+
+    # Apply CLAHE to L-channel only (preserves chromaticity)
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    cl = clahe.apply(l)
+
+    # Recombine and convert back to BGR
+    limg = cv2.merge((cl, a, b))
+    return cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
+</code></pre>
+<p>Operating solely on the Luminance ($L$) channel enhances dark target silhouettes while avoiding chromatic color distortion.</p>
+<hr />
+<h2 id="5-target-state-estimation-error-normalization">5. Target State Estimation &amp; Error Normalization</h2>
+<p>Once the neural network outputs bounding boxes $[x_{\min}, y_{\min}, x_{\max}, y_{\max}]$ with confidence scores above the user threshold (default $0.35$), the targeting computer calculates the optical error vector:</p>
+<pre><code>                    (0, 0) Image Frame Origin
+                      +-----------------------------+
+                      |                             |
+                      |          Center (W/2, H/2)  |
+                      |                 +           |
+                      |                 |           |
+                      |             -dy |           |
+                      |                 v           |
+                      |         +-------+-------+   |
+                      |         | Target Centroid|   |
+                      |         +-------+-------+   |
+                      |            &lt;-dx-            |
+                      |                             |
+                      +-----------------------------+ (W, H)
+</code></pre>
+<ol>
+<li><strong>Target Centroid</strong>:<br />
+   $$x_c = \frac{x_{\min} + x_{\max}}{2}, \quad y_c = \frac{y_{\min} + y_{\max}}{2}$$</li>
+<li><strong>Pixel Offset from Boresight</strong>:<br />
+   $$\Delta x = x_c - \frac{W}{2}, \quad \Delta y = y_c - \frac{H}{2}$$</li>
+<li><strong>Lock Persistence Filter</strong>:<br />
+   To prevent false-positive triggers from passing glints or birds, the tracking state machine enforces a persistence requirement:<br />
+   $$\text{Locked} = (\text{Consecutive Detections} \ge 3)$$</li>
+</ol>
+</section>
+<div class="chapter-divider"></div>
+<section class="chapter-section" id="section-04_robotics_and_kinematics">
+<h1 id="04_robotics_and_kinematics" id="chapter-4-robotics-kinematics-visual-servoing">Chapter 4: Robotics, Kinematics &amp; Visual Servoing</h1>
+<p>The mechanical tracking head of Agesis EYE is a <strong>Two-Degree-of-Freedom (2-DoF) Pan-Tilt Robotic Manipulator</strong>. </p>
+<p>This chapter presents the mathematical foundations of the targeting kinematics, Image-Based Visual Servoing (IBVS), and the formal proof of <strong>inter-servo distance $d$ invariance</strong> implemented in <a href="file:///c:/Users/ASUS/Desktop/Agesis%20EYE/backend/turret.py">turret.py</a>.</p>
+<hr />
+<h2 id="1-2-dof-pan-tilt-manipulator-coordinate-frames">1. 2-DoF Pan-Tilt Manipulator Coordinate Frames</h2>
+<p>The mechanical assembly comprises two rotational joints separated by a vertical standoff spar of variable height $d$:</p>
+<pre><code>                       [ Laser / Camera Head ]
+                                  |
+                           (Tilt Joint J2)
+                                  |
+                                  |  &lt;--- Variable Standoff Distance d
+                                  |
+                           (Pan Joint J1)
+                                  |
+                        [ Ground Pedestal ]
+</code></pre>
+<ol>
+<li><strong>Joint 1 (Pan / Azimuth)</strong>: Revolute joint rotating about the vertical $Z_0$-axis:<br />
+   $$\theta_{\text{pan}} \in [0^\circ, 180^\circ] \quad (\text{Neutral } 90^\circ)$$</li>
+<li><strong>Joint 2 (Tilt / Elevation)</strong>: Revolute joint mounted at height $d$ above Joint 1, rotating about a horizontal axis orthogonal to the stanchion:<br />
+   $$\theta_{\text{tilt}} \in [25^\circ, 155^\circ] \quad (\text{Neutral } 90^\circ)$$</li>
+</ol>
+<hr />
+<h2 id="2-mathematical-proof-of-distance-d-invariance">2. Mathematical Proof of Distance $d$ Invariance</h2>
+<p>A common flaw in pan-tilt turret software is hardcoding the physical distance $d$ between the pan servo and tilt servo into the control loop. If the user changes the stanchion height, tracking becomes unstable or develops steady-state error.</p>
+<p>Agesis EYE uses <strong>Image-Based Visual Servoing (IBVS)</strong> with an <strong>eye-in-hand</strong> sensor configuration, making optical tracking <strong>mathematically invariant to the distance $d$</strong>.</p>
+<h3 id="theorem">Theorem</h3>
+<p><em>The closed-loop visual tracking error nulling law is independent of the vertical separation distance $d$ between the Pan and Tilt servo axes when the optical sensor is co-mounted on the tilt arm.</em></p>
+<h3 id="proof">Proof</h3>
+<h4 id="1-pinhole-projection-model">1. Pinhole Projection Model</h4>
+<p>Let a point target in the camera frame be denoted by $\mathbf{P}_c = [X_c, Y_c, Z_c]^T$. Its projected image coordinates $(u, v)$ on the sensor are given by:<br />
+$$u = f_x \frac{X_c}{Z_c} + c_x, \quad v = f_y \frac{Y_c}{Z_c} + c_y$$<br />
+where $(f_x, f_y)$ are the focal lengths in pixels and $(c_x, c_y) = (W/2, H/2)$ is the optical principal center.</p>
+<p>The pixel error vector $\mathbf{e} = [\Delta x, \Delta y]^T$ from the optical center is:<br />
+$$\Delta x = u - c_x = f_x \frac{X_c}{Z_c}, \quad \Delta y = v - c_y = f_y \frac{Y_c}{Z_c}$$</p>
+<h4 id="2-azimuth-pan-invariance">2. Azimuth (Pan) Invariance</h4>
+<p>The Pan axis rotates around the vertical world axis $\mathbf{Z}<em _text_pan="\text{pan">{\text{world}}$.<br />
+Consider the translation from the Pan joint origin $O</em>$:}}$ to the Tilt joint origin $O_{\text{tilt}<br />
+$$\mathbf{T}_{\text{pan}\to\text{tilt}} = \begin{bmatrix} 0 \ 0 \ d \end{bmatrix}$$</p>
+<p>Because the translation vector is <strong>strictly parallel to the axis of rotation</strong> $\mathbf{Z}<em _text_pan="\text{pan">{\text{world}}$, the rotation matrix $\mathbf{R}_z(\theta</em>)$ commutes with the vertical translation:}<br />
+$$\mathbf{R}<em _text_pan="\text{pan">z(\theta</em>$$}}) \cdot \begin{bmatrix} 0 \ 0 \ d \end{bmatrix} = \begin{bmatrix} 0 \ 0 \ d \end{bmatrix</p>
+<p>Therefore, rotating about the Pan axis by an angle $\Delta \theta_{\text{pan}}$ produces an identical angular change in the target's azimuth angle regardless of whether $d = 10\text{ mm}$ or $d = 200\text{ mm}$:<br />
+$$\Delta \theta_{\text{pan}} = -\arctan\left(\frac{\Delta x}{f_x}\right) \approx -\frac{\Delta x}{f_x}$$<br />
+The distance $d$ does not appear anywhere in the azimuth angular correction equation. $\quad \blacksquare$</p>
+<h4 id="3-elevation-tilt-invariance">3. Elevation (Tilt) Invariance</h4>
+<p>Because the camera and laser are physically mounted to the C-shaped cradle on Joint 2's horn (eye-in-hand):<br />
+1. The camera frame origin $O_c$ coincides with (or is fixed rigidly to) Joint 2's rotation center.<br />
+2. An elevation angular change $\Delta \theta_{\text{tilt}}$ rotates the camera directly about its own pitch axis.<br />
+3. The vertical error angle is:<br />
+   $$\Delta \theta_{\text{tilt}} = \arctan\left(\frac{\Delta y}{f_y}\right) \approx \frac{\Delta y}{f_y}$$</p>
+<p>The standoff length $d$ simply translates the entire elevation gimbal vertically in world space; <strong>it does not rotate or alter the local angular line-of-sight vector from the camera lens to the target</strong>.</p>
+<p>Hence, the closed-loop visual servo update:<br />
+$$\theta_{\text{pan}}^{(k+1)} = \theta_{\text{pan}}^{(k)} - K_p \cdot \Delta x$$<br />
+$$\theta_{\text{tilt}}^{(k+1)} = \theta_{\text{tilt}}^{(k)} + K_p \cdot \Delta y$$<br />
+is <strong>completely invariant to the physical inter-servo distance $d$</strong>. $\quad \blacksquare$</p>
+<hr />
+<h2 id="3-spatial-parallax-3d-envelope-compensation">3. Spatial Parallax &amp; 3D Envelope Compensation</h2>
+<p>While visual tracking is $d$-invariant, the physical clearance envelope and world-frame spatial kinematics do depend on $d$:</p>
+<pre><code>                   Target
+                   *
+                  /|
+                 / |
+                /  | (Y_tgt - Y_pivot)
+               /   |
+   Tilt Axis  O----+
+              |    R_xz (Horizontal Range)
+              |
+              | d (Standoff)
+              |
+   Pan Axis   O (Base)
+</code></pre>
+<ol>
+<li><strong>3D World Target Elevation</strong>:<br />
+   For synthetic tracking or digital twin simulation, the inverse kinematics solver computes:<br />
+   $$\theta_{\text{tilt}} = 90^\circ + \arctan\left(\frac{Y_{\text{tgt}} - (Y_{\text{base}} + d)}{\sqrt{X_{\text{tgt}}^2 + Z_{\text{tgt}}^2}}\right)$$</li>
+<li><strong>Clearance Envelope Auto-Adjustment</strong>:<br />
+   As the riser height $d$ increases, the lever arm expands. The controller automatically narrows the allowable Pan/Tilt limits to prevent physical collisions:<br />
+   $$\text{Pan Margin} = \max(5.0^\circ, 10.0^\circ + (d - 45.0) \times 0.06)$$<br />
+   $$\text{Tilt Margin} = \max(15.0^\circ, 35.0^\circ - (d - 20.0) \times 0.15)$$</li>
+<li><strong>Parallax Offset</strong>:<br />
+   At a nominal engagement range of $1.2\text{ m}$ ($1200\text{ mm}$), the parallax angle $\phi$ between the base and head is auto-computed:<br />
+   $$\phi = \arctan\left(\frac{d}{1200\text{ mm}}\right)$$</li>
+</ol>
+<hr />
+<h2 id="4-s-curve-trajectory-slew-rate-limiting">4. S-Curve Trajectory &amp; Slew-Rate Limiting</h2>
+<p>To safeguard the 5V 2A power adapter from voltage dips caused by motor stalls, the backend applies a slew-rate acceleration limit:</p>
+<p>$$\Delta \theta_{\max} = 3.5^\circ \text{ per inference frame} \quad (\approx 120^\circ/\text{s at } 35\text{ FPS})$$</p>
+<pre><code class="language-python"># Extract from turret.py
+raw_dpan = -dx * self.kp
+raw_dtilt = dy * self.kp
+
+# Clamp step size to prevent instantaneous motor current spikes
+step_pan = max(-self.max_slew_step_deg, min(self.max_slew_step_deg, raw_dpan))
+step_tilt = max(-self.max_slew_step_deg, min(self.max_slew_step_deg, raw_dtilt))
+
+self.pan_angle += step_pan
+self.tilt_angle += step_tilt
+</code></pre>
+<p>This dual-layer protection (backend rate limiting + firmware interpolation) ensures that even sudden target jumps across the field of view produce smooth, brownout-safe tracking trajectories.</p>
+</section>
+<div class="chapter-divider"></div>
+<section class="chapter-section" id="section-05_physical_ai_and_digital_twin">
+<h1 id="05_physical_ai_and_digital_twin" id="chapter-5-physical-ai-3d-kinematic-digital-twin">Chapter 5: Physical AI &amp; 3D Kinematic Digital Twin</h1>
+<p><strong>Physical AI</strong> refers to artificial intelligence systems embodied in physical hardware that interact dynamically with the real physical world—navigating friction, inertia, motor torque limits, and power constraints.</p>
+<p>This chapter explores how Agesis EYE embodies Physical AI, bridging real-world neural perception with a real-time <strong>3D Kinematic Digital Twin</strong> implemented in <a href="file:///c:/Users/ASUS/Desktop/Agesis%20EYE/frontend/src/components/DigitalTwin.jsx">DigitalTwin.jsx</a>.</p>
+<hr />
+<h2 id="1-physical-ai-vs-disembodied-ai">1. Physical AI vs. Disembodied AI</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Attribute</th>
+<th style="text-align: left;">Disembodied AI (e.g. Chatbots, Static Vision)</th>
+<th style="text-align: left;">Physical AI (Agesis EYE)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Output</strong></td>
+<td style="text-align: left;">Text tokens, static bounding box coordinates</td>
+<td style="text-align: left;">Real motor torque, angular velocity, laser firing</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Feedback Loop</strong></td>
+<td style="text-align: left;">Open-loop (User prompts $\to$ Model responds)</td>
+<td style="text-align: left;">Closed-loop (Action alters the physical world $\to$ Sensor perceives change)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Constraints</strong></td>
+<td style="text-align: left;">Token compute limits, memory bandwidth</td>
+<td style="text-align: left;">Slew rate, gear backlash, inrush current, 5V 2A power rail limits</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Safety Risks</strong></td>
+<td style="text-align: left;">Hallucinations, incorrect text</td>
+<td style="text-align: left;">Motor burnouts, electrical brownouts, optical laser hazards</td>
+</tr>
+</tbody>
+</table>
+<p>In Agesis EYE, perception directly dictates action:</p>
+<pre><code>[Perception: ONNX Vision] 
+       │ 
+       ▼ (Sub-50ms IBVS Law)
+[Actuation: Dual SG90 Servos] 
+       │ 
+       ▼ (Physical World State Change)
+[Sensing: OV2640 Camera Sensor]
+</code></pre>
+<hr />
+<h2 id="2-role-of-the-3d-kinematic-digital-twin">2. Role of the 3D Kinematic Digital Twin</h2>
+<p>A <strong>Digital Twin</strong> is a high-fidelity virtual replica of a physical physical system that mirrors its real-time kinematics, geometry, and environment.</p>
+<p>Agesis EYE’s digital twin serves three crucial roles:<br />
+1. <strong>Hardware-in-the-Loop (HIL) Pre-Validation</strong>: Operators can test aggressive tracking algorithms on synthetic 3D trajectories (<code>FIGURE-8</code>, <code>ORBIT</code>, <code>EVASIVE</code>) before deploying physical hardware.<br />
+2. <strong>Real-Time Telemetry Mirroring (<code>LIVE_SYNC</code>)</strong>: When connected to the physical turret, the 3D model matches the exact physical Pan/Tilt angles reported by the hardware over WebSocket.<br />
+3. <strong>Kinematic Clearance Verification</strong>: By adjusting the on-screen distance slider $d$, operators can visually inspect physical stanchion clearances across all rotational extremes.</p>
+<hr />
+<h2 id="3-mathematical-3d-perspective-projection-engine">3. Mathematical 3D Perspective Projection Engine</h2>
+<p>The digital twin uses a custom, zero-dependency 3D perspective projection pipeline written in pure JavaScript, rendering at 60 FPS on HTML5 Canvas:</p>
+<pre><code>World Space (x, y, z) 
+   ──&gt; Camera Pan/Translation 
+   ──&gt; Yaw Rotation (rotY) 
+   ──&gt; Pitch Rotation (rotX) 
+   ──&gt; Perspective Division (fov / Z2) 
+   ──&gt; Screen Pixels (projX, projY)
+</code></pre>
+<h3 id="projection-equations">Projection Equations</h3>
+<p>Given a 3D point $\mathbf{P} = [x, y, z]^T$, camera pan offsets $(\Delta x_p, \Delta y_p)$, camera rotation angles $(\theta_{\text{pitch}}, \theta_{\text{yaw}})$, and distance $D$:</p>
+<ol>
+<li><strong>Camera Translation</strong>:<br />
+   $$t_x = x + \Delta x_p, \quad t_y = y - \Delta y_p, \quad t_z = z$$</li>
+<li><strong>Yaw (Y-Axis) Rotation</strong>:<br />
+   $$x_1 = t_x \cos\theta_{\text{yaw}} - t_z \sin\theta_{\text{yaw}}$$<br />
+   $$z_1 = t_x \sin\theta_{\text{yaw}} + t_z \cos\theta_{\text{yaw}}$$</li>
+<li><strong>Pitch (X-Axis) Rotation &amp; Depth Offset</strong>:<br />
+   $$y_2 = t_y \cos\theta_{\text{pitch}} - z_1 \sin\theta_{\text{pitch}}$$<br />
+   $$z_2 = t_y \sin\theta_{\text{pitch}} + z_1 \cos\theta_{\text{pitch}} + D$$</li>
+<li><strong>Perspective Division</strong>:<br />
+   $$\text{Scale} = \frac{f_{\text{fov}}}{\max(50, z_2)}$$<br />
+   $$\text{Screen } X = \frac{W}{2} + x_1 \cdot \text{Scale}, \quad \text{Screen } Y = \frac{H}{2} - y_2 \cdot \text{Scale}$$</li>
+</ol>
+<hr />
+<h2 id="4-cad-mechanical-assembly-modeling">4. CAD Mechanical Assembly Modeling</h2>
+<p>The digital twin directly replicates the Tinkercad CAD mechanical assembly:</p>
+<pre><code>                       [Red C-Arm &amp; Emitter]
+                                 |
+                        [Purple SG90 Tilt]
+                                 |
+                        [Standoff Riser d]
+                                 |
+                        [Purple SG90 Pan]
+                                 |
+                       [Orange Cyl. Pedestal]
+                     +-----------------------+
+   [Red Baseplate]   | [Peach ESP32 Module]  |
+=================================================
+</code></pre>
+<ol>
+<li><strong>Red Baseplate</strong>: Rectangular foundation (<code>#d9232a</code>) with tactical workplane grid inscription.</li>
+<li><strong>Peach Electronics Compartment</strong>: Mounted on the right side (<code>#f6ad85</code>), modeling the ESP32-CAM controller and power regulation block.</li>
+<li><strong>Orange Upright Pedestal</strong>: 16-segmented cylindrical pillar (<code>#ea580c</code> / <code>#f97316</code>) providing base elevation.</li>
+<li><strong>Pan SG90 Servo</strong>: Casing rendered in signature purple (<code>#432371</code>) with blue mounting flanges and top spline horn.</li>
+<li><strong>Rotating Riser Spar</strong>: Vertical gunmetal spar with live Vernier caliper HUD displaying $d\text{ mm}$ in real time.</li>
+<li><strong>Tilt SG90 Servo</strong>: Horizontally oriented micro-servo mounted to the upper riser spar.</li>
+<li><strong>Red C-Shaped Cantilever Arm</strong>: Distinctive pivoting C-cradle holding the optical vision lens and laser collimator nozzle.</li>
+</ol>
+<hr />
+<h2 id="5-target-physics-explosion-respawn-engine">5. Target Physics, Explosion &amp; Respawn Engine</h2>
+<p>When the laser beam engages the aerial target, the simulation applies continuous physical modeling:</p>
+<ol>
+<li><strong>Thermal Absorption</strong>:<br />
+   The target accumulates thermal load:<br />
+   $$\text{Heat}_{t+\Delta t} = \text{Heat}_t + 0.75 \cdot \Delta t$$<br />
+   At $\text{Heat} \ge 1.0$ ($\approx 1.3\text{ seconds}$ of sustained fire), the hull reaches catastrophic failure.</li>
+<li><strong>Target Detonation</strong>:</li>
+<li><strong>3D Shockwaves</strong>: Expanding concentric plasma rings fade radially into space.</li>
+<li><strong>45 Shrapnel Fragments</strong>: Particle velocities are calculated in spherical coordinates:<br />
+     $$v_x = s \cos\phi \cos\theta, \quad v_y = s \sin\phi + 45, \quad v_z = s \cos\phi \sin\theta$$<br />
+     where speed $s \in [75, 200]\text{ mm/s}$.</li>
+<li><strong>Gravity Decay</strong>: Particles decelerate under simulated gravity ($g = 140\text{ mm/s}^2$).</li>
+<li><strong>Clean Respawn</strong>:<br />
+   After a 1.2-second dispersal period, the target executes a digital materialization cycle (<code>respawnWarp</code>), resetting heat and re-entering the tactical engagement area.</li>
+</ol>
+</section>
+<div class="chapter-divider"></div>
+<section class="chapter-section" id="section-06_ai_ml_engineering">
+<h1 id="06_ai_ml_engineering" id="chapter-6-aiml-engineering-model-optimization">Chapter 6: AI/ML Engineering &amp; Model Optimization</h1>
+<p>Agesis EYE uses a customized single-stage convolutional detector optimized for lightweight edge execution.</p>
+<p>This chapter details the neural network architecture, dataset engineering, loss formulations, and export pipelines used in creating <strong><code>agesis06.onnx</code></strong>.</p>
+<hr />
+<h2 id="1-object-detection-architecture-yolo-edge-variant">1. Object Detection Architecture: YOLO Edge Variant</h2>
+<p>Single-stage detectors simultaneously predict bounding box coordinates and class probabilities across a unified feature grid, avoiding the multi-pass bottlenecks of R-CNN architectures.</p>
+<div class="diagram-card"><pre>graph TD
+    subgraph "1. Input Layer"
+        IN["Input Image\n(384x384x3 RGB)"]
+    end
+
+    subgraph "2. Backbone (Feature Extractor)"
+        C1["Stem Conv (Stride 2)"] --> C2["C2f Block 1 (Local Features)"]
+        C2 --> C3["Conv (Stride 2)"] --> C4["C2f Block 2 (Medium Textures)"]
+        C4 --> C5["Conv (Stride 2)"] --> C6["C2f Block 3 (High Semantics)"]
+    end
+
+    subgraph "3. Neck (Path Aggregation Network - PANet)"
+        C6 --> N1["Top-Down Feature Upsampling"]
+        C4 --> N2["Lateral Feature Concatenation"]
+        N1 --> N2
+        N2 --> N3["Bottom-Up Path Aggregation"]
+    end
+
+    subgraph "4. Decoupled Head (Anchor-Free)"
+        N3 --> H1["BBox Regression Branch (DFL + CIoU)"]
+        N3 --> H2["Classification Branch (BCE Loss)"]
+    end
+
+    IN --> C1</pre></div>
+
+<h3 id="architectural-highlights">Architectural Highlights</h3>
+<ul>
+<li><strong>Stem Layer</strong>: Rapidly downsamples high-resolution inputs to reduce memory bandwidth consumption.</li>
+<li><strong>C2f Modules</strong>: Split-and-cross feature connections enhance gradient flow while cutting redundant parameter counts.</li>
+<li><strong>Decoupled Anchor-Free Head</strong>: Separating classification from bounding box regression accelerates convergence and eliminates manual anchor box hyperparameter tuning.</li>
+</ul>
+<hr />
+<h2 id="2-dataset-engineering-synthetic-augmentation">2. Dataset Engineering &amp; Synthetic Augmentation</h2>
+<p>Real-world tracking models must remain resilient against varied lighting, motion blur, and backgrounds:</p>
+<pre><code>+-----------------------------------------------------------+
+|              DATASET AUGMENTATION PIPELINE                |
+|                                                           |
+| [Raw Dataset] ──&gt; Mosaic 4-Image Stitches                 |
+|               ──&gt; Random Affine (Rotation ±15°, Scale)    |
+|               ──&gt; HSV Chromatic Shift (Hue ±0.015)        |
+|               ──&gt; Synthetic Motion Blur (Kernel 3x3..7x7) |
+|               ──&gt; MixUp Alpha Blending                    |
++-----------------------------------------------------------+
+</code></pre>
+<ol>
+<li><strong>Mosaic Augmentation</strong>: Stitches 4 randomly cropped images into one, forcing the network to detect targets at varying spatial scales and preventing border biases.</li>
+<li><strong>Synthetic Motion Blur</strong>: Simulates fast turret panning by applying randomized linear directional blur filters.</li>
+<li><strong>Chromatic Jitter</strong>: Randomizes HSV channels to prevent the model from memorizing specific balloon dye shades.</li>
+</ol>
+<hr />
+<h2 id="3-multi-task-loss-formulation">3. Multi-Task Loss Formulation</h2>
+<p>Training optimizes a composite loss function balancing localization accuracy and classification confidence:</p>
+<p>$$\mathcal{L}<em _text_box="\text{box">{\text{total}} = \lambda</em>}} \mathcal{L<em _text_cls="\text{cls">{\text{CIoU}} + \lambda</em>}} \mathcal{L<em _text_dfl="\text{dfl">{\text{BCE}} + \lambda</em>$$}} \mathcal{L}_{\text{DFL}</p>
+<h3 id="1-complete-intersection-over-union-mathcall_textciou">1. Complete Intersection over Union ($\mathcal{L}_{\text{CIoU}}$)</h3>
+<p>Accounts for overlap area, central point distance, and aspect ratio:<br />
+$$\mathcal{L}_{\text{CIoU}} = 1 - \text{IoU} + \frac{\rho^2(b, b^{gt})}{c^2} + \alpha v$$<br />
+where:<br />
+* $\rho(b, b^{gt})$ is the Euclidean distance between predicted and ground-truth centroids.<br />
+* $c$ is the diagonal length of the smallest enclosing box.<br />
+* $v = \frac{4}{\pi^2}\left(\arctan\frac{w^{gt}}{h^{gt}} - \arctan\frac{w}{h}\right)^2$ penalizes aspect ratio discrepancies.</p>
+<h3 id="2-distribution-focal-loss-mathcall_textdfl">2. Distribution Focal Loss ($\mathcal{L}_{\text{DFL}}$)</h3>
+<p>Formulates bounding box regression as a continuous probability distribution rather than a deterministic single float, improving localization under occlusions.</p>
+<hr />
+<h2 id="4-pytorch-to-onnx-export-optimization-pipeline">4. PyTorch to ONNX Export &amp; Optimization Pipeline</h2>
+<p>Deploying native <code>.pt</code> models carries high interpreter overhead. Converting to ONNX freezes the computational graph for high-speed SIMD evaluation:</p>
+<pre><code class="language-python">from ultralytics import YOLO
+
+# 1. Load trained PyTorch checkpoint
+model = YOLO(&quot;agesis06.pt&quot;)
+
+# 2. Export to optimized static ONNX graph
+model.export(
+    format=&quot;onnx&quot;,
+    imgsz=384,          # Optimal resolution for QVGA 320x240 camera feeds
+    dynamic=False,      # Fixed tensor shape maximizes memory layout speed
+    simplify=True,      # Run ONNX-Simplifier to fold constants
+    opset=12            # Broad compatibility across all CPU runtimes
+)
+</code></pre>
+<h3 id="performance-comparison">Performance Comparison</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Metric</th>
+<th style="text-align: left;">Native PyTorch (<code>.pt</code>)</th>
+<th style="text-align: left;">ONNX Runtime (<code>.onnx</code>)</th>
+<th style="text-align: left;">Improvement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Inference Time (CPU)</strong></td>
+<td style="text-align: left;">$32.4\text{ ms}$</td>
+<td style="text-align: left;"><strong>$14.2\text{ ms}$</strong></td>
+<td style="text-align: left;"><strong>2.28x Faster</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Frame Rate (FPS)</strong></td>
+<td style="text-align: left;">$\approx 30.8\text{ FPS}$</td>
+<td style="text-align: left;"><strong>$\ge 70.4\text{ FPS}$</strong></td>
+<td style="text-align: left;"><strong>128% Higher Throughput</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RAM Consumption</strong></td>
+<td style="text-align: left;">$850\text{ MB}$</td>
+<td style="text-align: left;"><strong>$210\text{ MB}$</strong></td>
+<td style="text-align: left;"><strong>75% Memory Reduction</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Dependencies</strong></td>
+<td style="text-align: left;">PyTorch, TorchVision, CUDA</td>
+<td style="text-align: left;">Pure <code>onnxruntime</code></td>
+<td style="text-align: left;"><strong>Zero GPU/CUDA Bloat</strong></td>
+</tr>
+</tbody>
+</table>
+</section>
+<div class="chapter-divider"></div>
+<section class="chapter-section" id="section-07_hardware_assembly_and_wiring">
+<h1 id="07_hardware_assembly_and_wiring" id="chapter-7-hardware-assembly-wiring-safety-protocols">Chapter 7: Hardware Assembly, Wiring &amp; Safety Protocols</h1>
+<p>This chapter provides a step-by-step engineering guide for physically building, wiring, and safely operating the Agesis EYE turret based on the Tinkercad CAD mechanical assembly.</p>
+<hr />
+<h2 id="1-bill-of-materials-bom">1. Bill of Materials (BOM)</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Component</th>
+<th style="text-align: left;">Quantity</th>
+<th style="text-align: left;">Specification / Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>ESP32-CAM Board</strong></td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">AI-Thinker model with OV2640 camera module</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>FTDI Programmer</strong></td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">USB-to-UART adapter (3.3V logic) for initial firmware flash</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Micro-Servos</strong></td>
+<td style="text-align: left;">2</td>
+<td style="text-align: left;">TowerPro SG90 (9g micro-servo, 180° or 360° continuous)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Laser Diode Module</strong></td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">5V / 650nm Red Laser Diode ($5\text{mW}$ Class 3R)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Power Supply</strong></td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">5V 2A DC regulated wall adapter</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Decoupling Capacitor</strong></td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">$470\,\mu\text{F}$ to $1000\,\mu\text{F}$ Electrolytic (10V+)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>3D Printed / CAD Parts</strong></td>
+<td style="text-align: left;">1 Set</td>
+<td style="text-align: left;">Red Baseplate, Peach Enclosure, Orange Pedestal, Riser, Red C-Arm</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Hardware Fasteners</strong></td>
+<td style="text-align: left;">8</td>
+<td style="text-align: left;">M2 x 8mm machine screws for servo horns and brackets</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="2-step-by-step-mechanical-assembly">2. Step-by-Step Mechanical Assembly</h2>
+<p>Follow the construction order matching the Tinkercad CAD design:</p>
+<pre><code>[Step 5: Red C-Arm &amp; Emitter]
+           │
+[Step 4: Tilt SG90 on Riser Spar]
+           │
+[Step 3: Standoff Spar d]
+           │
+[Step 2: Pan SG90 on Pedestal]
+           │
+[Step 1: Orange Pedestal &amp; Red Baseplate]
+</code></pre>
+<h3 id="step-1-baseplate-electronics-enclosure">Step 1: Baseplate &amp; Electronics Enclosure</h3>
+<ol>
+<li>Place the <strong>Red Rectangular Baseplate</strong> flat on your work surface.</li>
+<li>Fasten the <strong>Peach Electronics Enclosure</strong> onto the right-hand portion of the baseplate.</li>
+<li>Seat the ESP32-CAM inside the enclosure, ensuring the micro-USB / DC power port faces outward for easy connection.</li>
+</ol>
+<h3 id="step-2-pedestal-column-pan-servo">Step 2: Pedestal Column &amp; Pan Servo</h3>
+<ol>
+<li>Mount the <strong>Orange Cylindrical Pedestal</strong> vertically onto the left-hand circular mounting recess of the red baseplate.</li>
+<li>Insert <strong>Servo 1 (Pan)</strong> vertically into the top pocket of the orange pedestal with its splined output shaft pointing straight upwards.</li>
+<li>Fasten the servo mounting ears using two M2 screws.</li>
+</ol>
+<h3 id="step-3-riser-standoff-spar-dimension-d">Step 3: Riser Standoff Spar (Dimension $d$)</h3>
+<ol>
+<li>Press the standard single-arm or circular servo horn into the bottom pocket of the <strong>Vertical Riser Spar</strong>.</li>
+<li>Mount the spar horn onto Servo 1's vertical shaft.</li>
+<li><em>Note</em>: The height of this spar defines distance $d$. Thanks to the $d$-invariant kinematics, any length from $15\text{ mm}$ to $150\text{ mm}$ will function seamlessly without software recalibration.</li>
+</ol>
+<h3 id="step-4-tilt-servo-installation">Step 4: Tilt Servo Installation</h3>
+<ol>
+<li>Mount <strong>Servo 2 (Tilt)</strong> horizontally into the side bracket at the top of the riser spar.</li>
+<li>Fasten the servo body using M2 screws, ensuring its output shaft points sideways.</li>
+</ol>
+<h3 id="step-5-red-c-arm-sensor-cradle">Step 5: Red C-Arm &amp; Sensor Cradle</h3>
+<ol>
+<li>Fasten the <strong>Red C-Shaped Cantilever Arm</strong> onto Servo 2's horn.</li>
+<li>Secure the OV2640 camera lens in the upper cradle opening of the C-arm, facing forward along the boresight.</li>
+<li>Seat the laser diode emitter in the lower cradle opening, collinear with the camera optical axis.</li>
+</ol>
+<hr />
+<h2 id="3-electrical-wiring-diagram">3. Electrical Wiring Diagram</h2>
+<pre><code>                             5V 2A DC Power Adapter
+                              +           -
+                              |           |
+                              +-----+-----+
+                                    |
+          +-------------------------+-------------------------+
+          |                         |                         |
+          v                         v                         v
+     [ESP32-CAM]              [Pan Servo]               [Tilt Servo]
+   +-------------+          +-------------+           +-------------+
+   | 5V   &lt;------+-- 5V     | Red   &lt;-----+-- 5V      | Red   &lt;-----+-- 5V
+   | GND  &lt;------+-- GND    | Brown &lt;-----+-- GND     | Brown &lt;-----+-- GND
+   |             |          | Orange (PWM)|           | Orange (PWM)|
+   | IO12 (PWM) -+--------&gt; |             |           |             |
+   | IO13 (PWM) -+----------------------------------&gt; |             |
+   | IO14 (OUT) -+----+     +-------------+           +-------------+
+   +-------------+    |
+                      v
+                [Laser Diode]
+               +-------------+
+               | Red (+) &lt;---+ (IO14 Trigger)
+               | Blue (-) &lt;--+ (Common GND)
+               +-------------+
+</code></pre>
+<h3 id="wiring-table">Wiring Table</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Component Wire</th>
+<th style="text-align: left;">Connection Point</th>
+<th style="text-align: left;">Function</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>ESP32 5V</strong></td>
+<td style="text-align: left;">Adapter 5V (+) Rail</td>
+<td style="text-align: left;">Microcontroller main power input</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ESP32 GND</strong></td>
+<td style="text-align: left;">Adapter GND (-) Rail</td>
+<td style="text-align: left;">Common ground reference</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Pan Servo (Red)</strong></td>
+<td style="text-align: left;">Adapter 5V (+) Rail</td>
+<td style="text-align: left;">Motor power</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Pan Servo (Brown)</strong></td>
+<td style="text-align: left;">Adapter GND (-) Rail</td>
+<td style="text-align: left;">Motor ground</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Pan Servo (Orange)</strong></td>
+<td style="text-align: left;"><strong>ESP32 GPIO 12</strong></td>
+<td style="text-align: left;">LEDC Channel 2 hardware PWM</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Tilt Servo (Red)</strong></td>
+<td style="text-align: left;">Adapter 5V (+) Rail</td>
+<td style="text-align: left;">Motor power</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Tilt Servo (Brown)</strong></td>
+<td style="text-align: left;">Adapter GND (-) Rail</td>
+<td style="text-align: left;">Motor ground</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Tilt Servo (Orange)</strong></td>
+<td style="text-align: left;"><strong>ESP32 GPIO 13</strong></td>
+<td style="text-align: left;">LEDC Channel 3 hardware PWM</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Laser Diode (Red)</strong></td>
+<td style="text-align: left;"><strong>ESP32 GPIO 14</strong></td>
+<td style="text-align: left;">Optical targeting trigger signal</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Laser Diode (Blue)</strong></td>
+<td style="text-align: left;">Adapter GND (-) Rail</td>
+<td style="text-align: left;">Laser cathode ground return</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>[!IMPORTANT]<br />
+<strong>Decoupling Capacitor Recommendation</strong>: Solder a <strong>$470\,\mu\text{F}$ or $1000\,\mu\text{F}$ electrolytic capacitor</strong> directly across the 5V and GND rails near the servo leads. This absorbs transient inrush currents when the motors kick on, ensuring the 5V rail remains smooth and preventing Wi-Fi brownouts.</p>
+</blockquote>
+<hr />
+<h2 id="4-laser-safety-protocols-interlock-state-machine">4. Laser Safety Protocols &amp; Interlock State Machine</h2>
+<p>High-energy laser emitters present potential optical radiation hazards. Agesis EYE implements strict multi-tier safety interlocks:</p>
+<div class="diagram-card"><pre>stateDiagram-v2
+    [*] --> DISARMED: Power On / Default Safe
+    DISARMED --> ARMED: User Toggles Master Armed Switch
+    ARMED --> DISARMED: User Disarms Switch
+
+    ARMED --> TARGETING: Target Detected
+    TARGETING --> ARMED: Target Lost (> 300ms)
+
+    TARGETING --> FIRING: Locked >= 3 Frames AND Error < 16px
+    FIRING --> COOLDOWN: Time > 1.5s (Max Continuous Limit)
+    FIRING --> ARMED: Lock Lost
+
+    COOLDOWN --> ARMED: Cooldown Elapsed (2.0s)</pre></div>
+
+<h3 id="safety-rules-implemented-in-software">Safety Rules Implemented in Software</h3>
+<ol>
+<li><strong>Physical Master Arm</strong>: The laser is software-locked in the <code>DISARMED</code> state on boot. It will not energize until explicitly armed by the operator.</li>
+<li><strong>Persistence Lock Requirement</strong>: Firing requires $\ge 3$ consecutive frames of positive target confirmation. Transient glints will never trigger a pulse.</li>
+<li><strong>Centering Threshold</strong>: The target centroid must be within a $\pm 16\text{ px}$ optical error cone of the central boresight.</li>
+<li><strong>Instant Cutoff</strong>: If optical tracking is broken for more than $300\text{ ms}$, the laser output immediately drops to $0\text{ V}$.</li>
+<li><strong>Thermal Duty Cycle</strong>: Continuous firing is hardware-capped at <strong>$1.5\text{ seconds}$</strong>, followed by an enforced <strong>$2.0\text{-second}$ cooldown lockout</strong>.</li>
+</ol>
+<blockquote>
+<p>[!WARNING]<br />
+<strong>Protective Eyewear</strong>: Always wear certified laser safety glasses rated for the wavelength of your emitter (e.g. $650\text{nm}$ OD $4+$) when operating the turret with an active laser diode. Never look directly into the beam path.</p>
+</blockquote>
+</section>
+  </main>
+
+  <script>
+    // Highlight active section on scroll
+    window.addEventListener('scroll', () => {
+      const headings = document.querySelectorAll('h1[id]');
+      let current = '';
+      headings.forEach(h => {
+        const top = h.getBoundingClientRect().top;
+        if (top <= 120) current = h.id;
+      });
+      document.querySelectorAll('.toc-link').forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('href') === '#' + current) {
+          link.classList.add('active');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

@@ -252,6 +252,11 @@ async def websocket_telemetry(ws: WebSocket):
 # Serve snapshots directory
 app.mount("/snapshots", StaticFiles(directory=SNAPSHOT_DIR), name="snapshots")
 
+# Serve complete documentation and PDF manual
+DOCS_PATH = os.path.join(PROJECT_ROOT, "docs")
+if os.path.exists(DOCS_PATH):
+    app.mount("/docs", StaticFiles(directory=DOCS_PATH, html=True), name="docs")
+
 # Serve frontend directory (prioritize compiled React production build in dist/)
 FRONTEND_DIST = os.path.join(FRONTEND_DIR, "dist")
 static_dir = FRONTEND_DIST if os.path.exists(FRONTEND_DIST) else FRONTEND_DIR
