@@ -51,6 +51,7 @@ if os.path.exists(CONFIG_PATH):
 stream_reader = ZeroLagStreamReader(default_stream_url)
 tracker = BalloonTracker(MODEL_PATH, imgsz=384, conf=0.35, enhance=False)
 turret = TurretController()
+turret.set_esp32_endpoint(default_stream_url)
 
 app = FastAPI(title="Agesis EYE Autonomous Turret")
 
@@ -158,6 +159,7 @@ def update_config(cfg: ConfigModel):
     if cfg.source is not None and cfg.source != stream_reader.source:
         stream_reader.release()
         stream_reader = ZeroLagStreamReader(cfg.source)
+        turret.set_esp32_endpoint(cfg.source)
         try:
             with open(CONFIG_PATH, "w") as f:
                 json.dump({"stream_url": cfg.source}, f, indent=2)
@@ -224,6 +226,7 @@ def take_snapshot():
 def discover_camera():
     discovered = auto_discover_esp32_ip()
     if discovered:
+        turret.set_esp32_endpoint(discovered)
         return {"status": "found", "url": discovered}
     return {"status": "not_found", "message": "Could not locate ESP32 on local subnet"}
 

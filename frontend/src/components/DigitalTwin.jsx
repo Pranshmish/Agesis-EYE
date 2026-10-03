@@ -371,10 +371,10 @@ export default function DigitalTwin({
         if (sp.life <= 0) tgt.sparks.splice(i, 1);
       }
 
-      // 2. Inverse Kinematics for Turret Body (Volumetric Heavy Autonomous Turret)
-      const stanchionHeight = Math.max(20, Math.min(220, localDistance)) * 1.15;
-      const baseElev = 42; // Pan servo & turntable deck height
-      const pivotY = baseElev + stanchionHeight; // Tilt gimbal trunnion pivot height
+      // 2. Inverse Kinematics for Turret Body (Matches Tinkercad CAD Assembly)
+      const stanchionHeight = Math.max(20, Math.min(220, localDistance)) * 1.05;
+      const baseElev = 92; // Orange pedestal (72) + SG90 Pan Servo (20)
+      const pivotY = baseElev + stanchionHeight; // Tilt gimbal pivot height
 
       if (simMode !== 'LIVE_SYNC') {
         const dx = tgt.x;
@@ -599,499 +599,316 @@ export default function DigitalTwin({
       };
 
       // ==========================================
-      // (A) STATIONARY HEAVY GROUND PEDESTAL & BEARING
+      // (A) STATIONARY CAD FOUNDATION: RED BASEPLATE & PEACH ELECTRONICS
       // ==========================================
-      // Octagonal fortified foundation baseplate (Y = 0 to Y = 12)
-      const baseR_bot = 88;
-      const baseR_top = 78;
-      const octPts_bot = [];
-      const octPts_top = [];
-      for (let i = 0; i < 8; i++) {
-        const a = (i * Math.PI) / 4 + Math.PI / 8;
-        octPts_bot.push({ x: baseR_bot * Math.cos(a), y: 0, z: baseR_bot * Math.sin(a) });
-        octPts_top.push({ x: baseR_top * Math.cos(a), y: 12, z: baseR_top * Math.sin(a) });
-      }
+      // 1. Red Rectangular Ground Baseplate (X: -45 to 115, Z: -60 to 60, Y: 0 to 10)
+      const baseplateCorners = [
+        { x: -45, y: 0, z: -60 },
+        { x: 115, y: 0, z: -60 },
+        { x: 115, y: 0, z: 60 },
+        { x: -45, y: 0, z: 60 },
+        { x: -45, y: 10, z: -60 },
+        { x: 115, y: 10, z: -60 },
+        { x: 115, y: 10, z: 60 },
+        { x: -45, y: 10, z: 60 },
+      ];
+      draw3DBox(baseplateCorners, '#d9232a', '#9b1419', '#7f0e13', 'rgba(255, 15, 60, 0.4)', 1.2);
 
-      // Draw octagonal side chamfered armor plates
-      for (let i = 0; i < 8; i++) {
-        const next = (i + 1) % 8;
-        const shade = i % 2 === 0 ? '#1b0e18' : '#261222';
-        draw3DFace([octPts_bot[i], octPts_bot[next], octPts_top[next], octPts_top[i]], shade, 'rgba(255, 15, 60, 0.45)', 1);
-      }
-      // Top face of ground baseplate
-      draw3DFace(octPts_top, '#160913', '#ff0f3d', 1.5);
-
-      // Heavy anchor bolt studs at the 8 vertices
-      for (let i = 0; i < 8; i++) {
-        const pBolt = project3D(octPts_top[i].x * 0.92, 13, octPts_top[i].z * 0.92, width, height);
-        if (pBolt.visible) {
-          ctx.beginPath();
-          ctx.arc(pBolt.x, pBolt.y, 2.5 * pBolt.scale, 0, Math.PI * 2);
-          ctx.fillStyle = '#ffffff';
-          ctx.fill();
+      // Workplane Grid Inscription on Baseplate Top
+      ctx.beginPath();
+      for (let gx = -35; gx <= 105; gx += 20) {
+        const p1 = project3D(gx, 10.2, -55, width, height);
+        const p2 = project3D(gx, 10.2, 55, width, height);
+        if (p1.visible && p2.visible) {
+          ctx.moveTo(p1.x, p1.y);
+          ctx.lineTo(p2.x, p2.y);
         }
       }
-
-      // Slewing Azimuth Bearing Collar (Y = 12 to Y = 30, radius 54)
-      const azR = 54;
-      const azSegs = 12;
-      const azBot = [];
-      const azTop = [];
-      for (let i = 0; i < azSegs; i++) {
-        const a = (i * 2 * Math.PI) / azSegs;
-        azBot.push({ x: azR * Math.cos(a), y: 12, z: azR * Math.sin(a) });
-        azTop.push({ x: azR * Math.cos(a), y: 30, z: azR * Math.sin(a) });
-      }
-      for (let i = 0; i < azSegs; i++) {
-        const next = (i + 1) % azSegs;
-        const shade = i % 2 === 0 ? '#120710' : '#1f0d1b';
-        draw3DFace([azBot[i], azBot[next], azTop[next], azTop[i]], shade, 'rgba(255, 15, 60, 0.25)', 0.8);
-      }
-
-      // Recessed Crimson Azimuth LED Status Channel (Y = 22)
-      ctx.beginPath();
-      for (let a = 0; a <= 360; a += 15) {
-        const rad = (a * Math.PI) / 180;
-        const pt = project3D(55 * Math.cos(rad), 22, 55 * Math.sin(rad), width, height);
-        if (a === 0) ctx.moveTo(pt.x, pt.y);
-        else ctx.lineTo(pt.x, pt.y);
-      }
-      ctx.strokeStyle = `rgba(255, 15, 60, ${0.5 + 0.35 * Math.sin(tgt.simTime * 3.5)})`;
-      ctx.lineWidth = 2.2;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+      ctx.lineWidth = 0.8;
       ctx.stroke();
 
-      // ==========================================
-      // (B) ROTATING PAN TURNTABLE DECK & SERVO (Y = 30 to Y = 42)
-      // ==========================================
-      // Turntable disk (radius 46)
-      const deckR = 46;
-      const deckSegs = 12;
-      const deckBot = [];
-      const deckTop = [];
-      for (let i = 0; i < deckSegs; i++) {
-        const a = (i * 2 * Math.PI) / deckSegs + yawAngle;
-        deckBot.push({ x: deckR * Math.cos(a), y: 30, z: deckR * Math.sin(a) });
-        deckTop.push({ x: deckR * Math.cos(a), y: 42, z: deckR * Math.sin(a) });
-      }
-      for (let i = 0; i < deckSegs; i++) {
-        const next = (i + 1) % deckSegs;
-        const shade = i % 2 === 0 ? '#220f1e' : '#2e1428';
-        draw3DFace([deckBot[i], deckBot[next], deckTop[next], deckTop[i]], shade, 'rgba(255, 15, 60, 0.5)', 1);
-      }
-      draw3DFace(deckTop, '#190a16', '#ff0f3d', 1.8);
-
-      // Pan Servo Motor Gearbox Block on rear of turntable deck (w = -28 to -8, u = -18 to 18, Y = 42 to 58)
-      const srvC = [
-        toWorldTurntable(-18, 42, -28),
-        toWorldTurntable(18, 42, -28),
-        toWorldTurntable(18, 42, -8),
-        toWorldTurntable(-18, 42, -8),
-        toWorldTurntable(-18, 58, -28),
-        toWorldTurntable(18, 58, -28),
-        toWorldTurntable(18, 58, -8),
-        toWorldTurntable(-18, 58, -8),
+      // 2. Peach Electronics Enclosure (ESP32 Controller & 5V 2A Regulator Module)
+      // Mounted on right side of red baseplate (X: 25 to 105, Z: -42 to 42, Y: 10 to 24)
+      const electronicsCorners = [
+        { x: 25, y: 10, z: -42 },
+        { x: 105, y: 10, z: -42 },
+        { x: 105, y: 10, z: 42 },
+        { x: 25, y: 10, z: 42 },
+        { x: 25, y: 24, z: -42 },
+        { x: 105, y: 24, z: -42 },
+        { x: 105, y: 24, z: 42 },
+        { x: 25, y: 24, z: 42 },
       ];
-      draw3DBox(srvC, '#2c1226', '#1a0917', '#250f20', '#ff0f3d', 1.2);
+      draw3DBox(electronicsCorners, '#f6ad85', '#d48860', '#ba7048', '#8f4f2e', 1.0);
 
-      // Servo Cooling Fins (3 parallel lines on side)
-      for (let f = 0; f < 3; f++) {
-        const yFin = 46 + f * 4;
-        const pF1 = project3D(...Object.values(toWorldTurntable(18.5, yFin, -26)), width, height);
-        const pF2 = project3D(...Object.values(toWorldTurntable(18.5, yFin, -10)), width, height);
-        if (pF1.visible && pF2.visible) {
-          ctx.beginPath();
-          ctx.moveTo(pF1.x, pF1.y);
-          ctx.lineTo(pF2.x, pF2.y);
-          ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 1.2;
-          ctx.stroke();
-        }
-      }
+      // ESP32 Status Badge & 5V 2A Power Port on Peach Box
+      const pEspLabel = project3D(65, 24.5, 0, width, height);
+      if (pEspLabel.visible) {
+        ctx.fillStyle = 'rgba(50, 20, 10, 0.85)';
+        ctx.font = 'bold 8px JetBrains Mono';
+        ctx.fillText('ESP32 5V/2A', pEspLabel.x - 24, pEspLabel.y + 3);
 
-      // ==========================================
-      // (C) DUAL-PYLON STANCHION & LEAD SCREW (Height d mm)
-      // ==========================================
-      const pylonTopY = pivotY - 8;
-
-      // Left Heavy Armored Pylon (u = -28 to -16, w = -8 to 8)
-      const pylonLeft = [
-        toWorldTurntable(-28, 42, -8),
-        toWorldTurntable(-16, 42, -8),
-        toWorldTurntable(-16, 42, 8),
-        toWorldTurntable(-28, 42, 8),
-        toWorldTurntable(-28, pylonTopY, -8),
-        toWorldTurntable(-16, pylonTopY, -8),
-        toWorldTurntable(-16, pylonTopY, 8),
-        toWorldTurntable(-28, pylonTopY, 8),
-      ];
-      draw3DBox(pylonLeft, '#381630', '#1c0a18', '#260e21', '#ff0f3d', 1.4);
-
-      // Right Heavy Armored Pylon (u = 16 to 28, w = -8 to 8)
-      const pylonRight = [
-        toWorldTurntable(16, 42, -8),
-        toWorldTurntable(28, 42, -8),
-        toWorldTurntable(28, 42, 8),
-        toWorldTurntable(16, 42, 8),
-        toWorldTurntable(16, pylonTopY, -8),
-        toWorldTurntable(28, pylonTopY, -8),
-        toWorldTurntable(28, pylonTopY, 8),
-        toWorldTurntable(16, pylonTopY, 8),
-      ];
-      draw3DBox(pylonRight, '#381630', '#1c0a18', '#260e21', '#ff0f3d', 1.4);
-
-      // Center Chrome Precision Ball-Screw Shaft
-      const pScrewBot = project3D(...Object.values(toWorldTurntable(0, 42, 0)), width, height);
-      const pScrewTop = project3D(...Object.values(toWorldTurntable(0, pylonTopY + 2, 0)), width, height);
-      if (pScrewBot.visible && pScrewTop.visible) {
+        // Power Status Indicator LEDs
         ctx.beginPath();
-        ctx.moveTo(pScrewBot.x, pScrewBot.y);
-        ctx.lineTo(pScrewTop.x, pScrewTop.y);
+        ctx.arc(pEspLabel.x + 28, pEspLabel.y + 1, 2.2 * pEspLabel.scale, 0, Math.PI * 2);
+        ctx.fillStyle = '#00ff66'; // Green Power 5V Rail
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(pEspLabel.x + 35, pEspLabel.y + 1, 2.2 * pEspLabel.scale, 0, Math.PI * 2);
+        ctx.fillStyle = '#ff0f3d'; // Red WiFi Radio / Armed
+        ctx.fill();
+      }
+
+      // ==========================================
+      // (B) STATIONARY ORANGE PEDESTAL CYLINDER
+      // ==========================================
+      // Centered at (0, 0) from Y: 10 to Y: 72, radius R = 24
+      const pedR = 24;
+      const pedSegs = 16;
+      const pedBot = [];
+      const pedTop = [];
+      for (let i = 0; i < pedSegs; i++) {
+        const a = (i * 2 * Math.PI) / pedSegs;
+        pedBot.push({ x: pedR * Math.cos(a), y: 10, z: pedR * Math.sin(a) });
+        pedTop.push({ x: pedR * Math.cos(a), y: 72, z: pedR * Math.sin(a) });
+      }
+
+      // Shaded Cylinder Wall (Vibrant Orange CAD styling)
+      for (let i = 0; i < pedSegs; i++) {
+        const next = (i + 1) % pedSegs;
+        const shade = (i % 4 === 0 || i % 4 === 1) ? '#ea580c' : '#c2410c';
+        draw3DFace([pedBot[i], pedBot[next], pedTop[next], pedTop[i]], shade, 'rgba(180, 50, 0, 0.3)', 0.8);
+      }
+      // Top disk of Orange Cylinder
+      draw3DFace(pedTop, '#f97316', '#c2410c', 1.2);
+
+      // ==========================================
+      // (C) PAN SERVO 1: SG90 MICRO-SERVO (PURPLE & BLUE)
+      // ==========================================
+      // Mounted vertically at (0, 0) from Y: 72 to Y: 92 (Width 12mm, Depth 23mm)
+      const panServoCorners = [
+        { x: -6, y: 72, z: -11.5 },
+        { x: 6, y: 72, z: -11.5 },
+        { x: 6, y: 72, z: 11.5 },
+        { x: -6, y: 72, z: 11.5 },
+        { x: -6, y: 92, z: -11.5 },
+        { x: 6, y: 92, z: -11.5 },
+        { x: 6, y: 92, z: 11.5 },
+        { x: -6, y: 92, z: 11.5 },
+      ];
+      draw3DBox(panServoCorners, '#432371', '#2f1552', '#240e40', '#6b3ba8', 1.0);
+
+      // SG90 Blue Mounting Ear Flanges
+      const panFlangeCorners = [
+        { x: -7.5, y: 82, z: -16 },
+        { x: 7.5, y: 82, z: -16 },
+        { x: 7.5, y: 82, z: 16 },
+        { x: -7.5, y: 82, z: 16 },
+        { x: -7.5, y: 84.5, z: -16 },
+        { x: 7.5, y: 84.5, z: -16 },
+        { x: 7.5, y: 84.5, z: 16 },
+        { x: -7.5, y: 84.5, z: 16 },
+      ];
+      draw3DBox(panFlangeCorners, '#2563eb', '#1d4ed8', '#1e40af', '#60a5fa', 0.8);
+
+      // SG90 Top Output Spline / Horn Shaft (Y: 92 to Y: 96)
+      const pShaftBot = project3D(0, 92, 0, width, height);
+      const pShaftTop = project3D(0, 96, 0, width, height);
+      if (pShaftBot.visible && pShaftTop.visible) {
+        ctx.beginPath();
+        ctx.moveTo(pShaftBot.x, pShaftBot.y);
+        ctx.lineTo(pShaftTop.x, pShaftTop.y);
         ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 4 * pScrewBot.scale;
-        ctx.stroke();
-
-        ctx.strokeStyle = '#ff0f3d';
-        ctx.lineWidth = 1.2;
-        ctx.stroke();
-
-        // Ball screw thread ridges
-        const threadCount = Math.floor(stanchionHeight / 14);
-        for (let t = 1; t <= threadCount; t++) {
-          const yT = 42 + (stanchionHeight * t) / (threadCount + 1);
-          const pTh1 = project3D(...Object.values(toWorldTurntable(-4, yT, 0)), width, height);
-          const pTh2 = project3D(...Object.values(toWorldTurntable(4, yT, 0)), width, height);
-          if (pTh1.visible && pTh2.visible) {
-            ctx.beginPath();
-            ctx.moveTo(pTh1.x, pTh1.y);
-            ctx.lineTo(pTh2.x, pTh2.y);
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 1.4;
-            ctx.stroke();
-          }
-        }
-      }
-
-      // Structural X-Truss Cross Bracing Between Pylons
-      const yTrussA = 42 + stanchionHeight * 0.28;
-      const yTrussB = 42 + stanchionHeight * 0.72;
-      const pT1 = project3D(...Object.values(toWorldTurntable(-16, yTrussA, 0)), width, height);
-      const pT2 = project3D(...Object.values(toWorldTurntable(16, yTrussB, 0)), width, height);
-      const pT3 = project3D(...Object.values(toWorldTurntable(-16, yTrussB, 0)), width, height);
-      const pT4 = project3D(...Object.values(toWorldTurntable(16, yTrussA, 0)), width, height);
-      if (pT1.visible && pT2.visible) {
-        ctx.beginPath();
-        ctx.moveTo(pT1.x, pT1.y);
-        ctx.lineTo(pT2.x, pT2.y);
-        ctx.moveTo(pT3.x, pT3.y);
-        ctx.lineTo(pT4.x, pT4.y);
-        ctx.strokeStyle = 'rgba(255, 15, 60, 0.7)';
-        ctx.lineWidth = 2 * pT1.scale;
+        ctx.lineWidth = 4.5 * pShaftBot.scale;
+        ctx.lineCap = 'round';
         ctx.stroke();
       }
 
-      // Vernier Millimeter Height Scale along Right Pylon
-      for (let mm = 0; mm <= 200; mm += 40) {
-        const yVal = 42 + (mm / 200) * stanchionHeight;
-        const pTickA = project3D(...Object.values(toWorldTurntable(28, yVal, 8)), width, height);
-        const pTickB = project3D(...Object.values(toWorldTurntable(34, yVal, 8)), width, height);
-        if (pTickA.visible && pTickB.visible) {
-          ctx.beginPath();
-          ctx.moveTo(pTickA.x, pTickA.y);
-          ctx.lineTo(pTickB.x, pTickB.y);
-          ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 1;
-          ctx.stroke();
-        }
-      }
+      // ==========================================
+      // (D) ROTATING RISER SPAR & VARIABLE STANDOFF d
+      // ==========================================
+      // Vertical riser bar connects Pan servo output upward to Tilt servo
+      // Height d is dynamically driven by localDistance! (Y: 96 to Y: pivotY)
+      const riserCorners = [
+        toWorldTurntable(-7, 96, -6),
+        toWorldTurntable(7, 96, -6),
+        toWorldTurntable(7, 96, 6),
+        toWorldTurntable(-7, 96, 6),
+        toWorldTurntable(-7, pivotY, -6),
+        toWorldTurntable(7, pivotY, -6),
+        toWorldTurntable(7, pivotY, 6),
+        toWorldTurntable(-7, pivotY, 6),
+      ];
+      draw3DBox(riserCorners, '#36152e', '#1c0a18', '#260e21', '#ff0f3d', 1.2);
 
-      // Tactical Caliper HUD Bracket for d mm
-      const pDimA = project3D(...Object.values(toWorldTurntable(46, 42, 0)), width, height);
-      const pDimB = project3D(...Object.values(toWorldTurntable(46, pivotY, 0)), width, height);
+      // Tactical Vernier Height Caliper HUD for Variable Distance d
+      const pDimA = project3D(...Object.values(toWorldTurntable(20, 96, 0)), width, height);
+      const pDimB = project3D(...Object.values(toWorldTurntable(20, pivotY, 0)), width, height);
       if (pDimA.visible && pDimB.visible) {
         ctx.beginPath();
         ctx.moveTo(pDimA.x, pDimA.y);
         ctx.lineTo(pDimB.x, pDimB.y);
         ctx.strokeStyle = '#ff0f3d';
-        ctx.lineWidth = 1.4;
+        ctx.lineWidth = 1.2;
         ctx.stroke();
 
         ctx.beginPath();
-        ctx.moveTo(pDimA.x - 6, pDimA.y);
-        ctx.lineTo(pDimA.x + 6, pDimA.y);
-        ctx.moveTo(pDimB.x - 6, pDimB.y);
-        ctx.lineTo(pDimB.x + 6, pDimB.y);
+        ctx.moveTo(pDimA.x - 5, pDimA.y);
+        ctx.lineTo(pDimA.x + 5, pDimA.y);
+        ctx.moveTo(pDimB.x - 5, pDimB.y);
+        ctx.lineTo(pDimB.x + 5, pDimB.y);
         ctx.stroke();
 
         const midX = (pDimA.x + pDimB.x) / 2;
         const midY = (pDimA.y + pDimB.y) / 2;
         ctx.fillStyle = 'rgba(12, 5, 10, 0.95)';
         ctx.strokeStyle = '#ff0f3d';
-        ctx.lineWidth = 1.2;
-        ctx.fillRect(midX + 6, midY - 11, 74, 22);
-        ctx.strokeRect(midX + 6, midY - 11, 74, 22);
+        ctx.lineWidth = 1.0;
+        ctx.fillRect(midX + 6, midY - 11, 88, 22);
+        ctx.strokeRect(midX + 6, midY - 11, 88, 22);
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 9px JetBrains Mono';
-        ctx.fillText(`d = ${localDistance}mm`, midX + 11, midY + 4);
+        ctx.font = 'bold 8.5px JetBrains Mono';
+        ctx.fillText(`d = ${localDistance}mm [AUTO]`, midX + 10, midY + 4);
       }
 
       // ==========================================
-      // (D) ELEVATION GIMBAL U-CRADLE & TRUNNIONS
+      // (E) TILT SERVO 2: SG90 MICRO-SERVO (PURPLE & BLUE)
       // ==========================================
-      // Horizontal Gimbal Saddle Bridge (u = -32 to 32, Y = pivotY - 12 to pivotY - 2, w = -10 to 10)
-      const saddle = [
-        toWorldTurntable(-32, pivotY - 12, -10),
-        toWorldTurntable(32, pivotY - 12, -10),
-        toWorldTurntable(32, pivotY - 12, 10),
-        toWorldTurntable(-32, pivotY - 12, 10),
-        toWorldTurntable(-32, pivotY - 2, -10),
-        toWorldTurntable(32, pivotY - 2, -10),
-        toWorldTurntable(32, pivotY - 2, 10),
-        toWorldTurntable(-32, pivotY - 2, 10),
+      // Mounted horizontally on side of riser spar at Y: pivotY (u: 7 to 25, v: -6 to 6, w: -11.5 to 11.5)
+      const tiltServoCorners = [
+        toWorldTurntable(7, pivotY - 6, -11.5),
+        toWorldTurntable(25, pivotY - 6, -11.5),
+        toWorldTurntable(25, pivotY - 6, 11.5),
+        toWorldTurntable(7, pivotY - 6, 11.5),
+        toWorldTurntable(7, pivotY + 6, -11.5),
+        toWorldTurntable(25, pivotY + 6, -11.5),
+        toWorldTurntable(25, pivotY + 6, 11.5),
+        toWorldTurntable(7, pivotY + 6, 11.5),
       ];
-      draw3DBox(saddle, '#34152c', '#180814', '#260f21', '#ff0f3d', 1.4);
+      draw3DBox(tiltServoCorners, '#432371', '#2f1552', '#240e40', '#6b3ba8', 1.0);
 
-      // Left Trunnion Bearing Arm (u = -30 to -24, Y = pivotY - 2 to pivotY + 12, w = -8 to 8)
-      const armLeft = [
-        toWorldTurntable(-30, pivotY - 2, -8),
-        toWorldTurntable(-24, pivotY - 2, -8),
-        toWorldTurntable(-24, pivotY - 2, 8),
-        toWorldTurntable(-30, pivotY - 2, 8),
-        toWorldTurntable(-30, pivotY + 12, -8),
-        toWorldTurntable(-24, pivotY + 12, -8),
-        toWorldTurntable(-24, pivotY + 12, 8),
-        toWorldTurntable(-30, pivotY + 12, 8),
-      ];
-      draw3DBox(armLeft, '#3d1834', '#1f0a1b', '#2a0e24', '#ff0f3d', 1.2);
-
-      // Right Trunnion Bearing Arm (u = 24 to 30, Y = pivotY - 2 to pivotY + 12, w = -8 to 8)
-      const armRight = [
-        toWorldTurntable(24, pivotY - 2, -8),
-        toWorldTurntable(30, pivotY - 2, -8),
-        toWorldTurntable(30, pivotY - 2, 8),
-        toWorldTurntable(24, pivotY - 2, 8),
-        toWorldTurntable(24, pivotY + 12, -8),
-        toWorldTurntable(30, pivotY + 12, -8),
-        toWorldTurntable(30, pivotY + 12, 8),
-        toWorldTurntable(24, pivotY + 12, 8),
-      ];
-      draw3DBox(armRight, '#3d1834', '#1f0a1b', '#2a0e24', '#ff0f3d', 1.2);
-
-      // Bilateral Trunnion Bearing Hubs (Large Heavy Axis Bearings)
-      const pPivotL = project3D(...Object.values(toWorldTurntable(-28, pivotY, 0)), width, height);
-      const pPivotR = project3D(...Object.values(toWorldTurntable(28, pivotY, 0)), width, height);
-      if (pPivotL.visible) {
+      // SG90 Blue Circular Servo Horn on Elevation Axis
+      const pTiltHorn = project3D(...Object.values(toWorldTurntable(6, pivotY, 0)), width, height);
+      if (pTiltHorn.visible) {
         ctx.beginPath();
-        ctx.arc(pPivotL.x, pPivotL.y, 8.5 * pPivotL.scale, 0, Math.PI * 2);
-        ctx.fillStyle = '#220e1e';
+        ctx.arc(pTiltHorn.x, pTiltHorn.y, 6.5 * pTiltHorn.scale, 0, Math.PI * 2);
+        ctx.fillStyle = '#2563eb';
         ctx.fill();
-        ctx.strokeStyle = '#ff0f3d';
-        ctx.lineWidth = 1.8;
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.arc(pPivotL.x, pPivotL.y, 3 * pPivotL.scale, 0, Math.PI * 2);
-        ctx.fillStyle = '#ffffff';
-        ctx.fill();
-      }
-      if (pPivotR.visible) {
-        // Elevation Servo Motor Canister on right trunnion
-        ctx.beginPath();
-        ctx.arc(pPivotR.x, pPivotR.y, 11 * pPivotR.scale, 0, Math.PI * 2);
-        ctx.fillStyle = '#311228';
-        ctx.fill();
-        ctx.strokeStyle = '#ff0f3d';
-        ctx.lineWidth = 2.2;
-        ctx.stroke();
-
-        // Rotary Encoder Dial
-        ctx.beginPath();
-        ctx.arc(pPivotR.x, pPivotR.y, 4.5 * pPivotR.scale, 0, Math.PI * 2);
-        ctx.fillStyle = '#ffffff';
-        ctx.fill();
-      }
-
-      // ==========================================
-      // (E) VOLUMETRIC ARMORED LASER CANNON POD
-      // ==========================================
-      // 1. Rear Counterweight & Radiator Chassis (w = -44 to -6, u = -18 to 18, v = -12 to 14)
-      const rearPod = [
-        toWorldGun(-18, -12, -44),
-        toWorldGun(18, -12, -44),
-        toWorldGun(18, -12, -6),
-        toWorldGun(-18, -12, -6),
-        toWorldGun(-16, 14, -44),
-        toWorldGun(16, 14, -44),
-        toWorldGun(18, 14, -6),
-        toWorldGun(-18, 14, -6),
-      ];
-      draw3DBox(rearPod, '#32142b', '#180815', '#240d1f', '#ff0f3d', 1.4);
-
-      // Glowing Rear Thermal Dissipation Vents
-      for (let v = 0; v < 3; v++) {
-        const wVent = -36 + v * 10;
-        const pV1 = project3D(...Object.values(toWorldGun(-15, 14.5, wVent)), width, height);
-        const pV2 = project3D(...Object.values(toWorldGun(15, 14.5, wVent)), width, height);
-        if (pV1.visible && pV2.visible) {
-          ctx.beginPath();
-          ctx.moveTo(pV1.x, pV1.y);
-          ctx.lineTo(pV2.x, pV2.y);
-          ctx.strokeStyle = `rgba(255, 30, 70, ${0.5 + 0.4 * Math.sin(tgt.simTime * 5 + v)})`;
-          ctx.lineWidth = 3.5 * pV1.scale;
-          ctx.stroke();
-        }
-      }
-
-      // Dual High-Voltage Capacitors on Top-Rear
-      const pCapL1 = project3D(...Object.values(toWorldGun(-10, 16, -34)), width, height);
-      const pCapL2 = project3D(...Object.values(toWorldGun(-10, 16, -12)), width, height);
-      const pCapR1 = project3D(...Object.values(toWorldGun(10, 16, -34)), width, height);
-      const pCapR2 = project3D(...Object.values(toWorldGun(10, 16, -12)), width, height);
-      if (pCapL1.visible && pCapL2.visible) {
-        ctx.beginPath();
-        ctx.moveTo(pCapL1.x, pCapL1.y);
-        ctx.lineTo(pCapL2.x, pCapL2.y);
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 5 * pCapL1.scale;
-        ctx.lineCap = 'round';
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(pCapR1.x, pCapR1.y);
-        ctx.lineTo(pCapR2.x, pCapR2.y);
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 5 * pCapR1.scale;
-        ctx.lineCap = 'round';
-        ctx.stroke();
-      }
-
-      // 2. Main Armored Laser Receiver Chassis (w = -6 to 38, u = -22 to 22, v = -14 to 16)
-      const mainChassis = [
-        toWorldGun(-22, -14, -6),
-        toWorldGun(22, -14, -6),
-        toWorldGun(22, -14, 38),
-        toWorldGun(-22, -14, 38),
-        toWorldGun(-22, 16, -6),
-        toWorldGun(22, 16, -6),
-        toWorldGun(20, 15, 38),
-        toWorldGun(-20, 15, 38),
-      ];
-      draw3DBox(mainChassis, '#3a1732', '#1a0917', '#290f23', '#ff0f3d', 1.6);
-
-      // 3. Co-Axial Electro-Optical Sensor Turret (Agesis "EYE" Tracking Gimbal)
-      // Mounted atop receiver at v = 16 to 27, w = 10 to 28, u = -9 to 9
-      const optPod = [
-        toWorldGun(-9, 16, 10),
-        toWorldGun(9, 16, 10),
-        toWorldGun(9, 16, 28),
-        toWorldGun(-9, 16, 28),
-        toWorldGun(-8, 27, 10),
-        toWorldGun(8, 27, 10),
-        toWorldGun(8, 27, 28),
-        toWorldGun(-8, 27, 28),
-      ];
-      draw3DBox(optPod, '#481c3e', '#220b1f', '#32102c', '#ff0f3d', 1.2);
-
-      // Sapphire Glass Sensor Objective Lens (Facing forward at w = 28.5)
-      const pLens = project3D(...Object.values(toWorldGun(0, 21.5, 28.5)), width, height);
-      if (pLens.visible) {
-        ctx.beginPath();
-        ctx.arc(pLens.x, pLens.y, 6.5 * pLens.scale, 0, Math.PI * 2);
-        ctx.fillStyle = '#061a28';
-        ctx.fill();
-        ctx.strokeStyle = '#00e5ff';
-        ctx.lineWidth = 1.6;
-        ctx.stroke();
-
-        // Antireflective coating glare
-        ctx.beginPath();
-        ctx.arc(pLens.x, pLens.y, 4 * pLens.scale, 0, Math.PI * 2);
-        ctx.fillStyle = '#ff0f3d';
-        ctx.fill();
-
-        ctx.beginPath();
-        ctx.arc(pLens.x - 2 * pLens.scale, pLens.y - 2 * pLens.scale, 1.8 * pLens.scale, 0, Math.PI * 2);
-        ctx.fillStyle = '#ffffff';
-        ctx.fill();
-      }
-
-      // 4. Stepped High-Energy Laser Emitter Barrel (w = 38 to 96)
-      // Stage 1: Hexagonal Heavy Collar (w = 38 to 54, radius 15)
-      const colSegs = 6;
-      const colBot = [];
-      const colTop = [];
-      for (let i = 0; i < colSegs; i++) {
-        const a = (i * 2 * Math.PI) / colSegs;
-        const u = 15 * Math.cos(a);
-        const v = 15 * Math.sin(a);
-        colBot.push(toWorldGun(u, v, 38));
-        colTop.push(toWorldGun(u, v, 54));
-      }
-      for (let i = 0; i < colSegs; i++) {
-        const next = (i + 1) % colSegs;
-        const shade = i % 2 === 0 ? '#2a0f25' : '#381531';
-        draw3DFace([colBot[i], colBot[next], colTop[next], colTop[i]], shade, 'rgba(255, 15, 60, 0.6)', 1.2);
-      }
-
-      // Stage 2: Magnetic Beam-Focusing Shroud (w = 54 to 76, radius 11)
-      const shrSegs = 8;
-      const shrBot = [];
-      const shrTop = [];
-      for (let i = 0; i < shrSegs; i++) {
-        const a = (i * 2 * Math.PI) / shrSegs;
-        const u = 11 * Math.cos(a);
-        const v = 11 * Math.sin(a);
-        shrBot.push(toWorldGun(u, v, 54));
-        shrTop.push(toWorldGun(u, v, 76));
-      }
-      for (let i = 0; i < shrSegs; i++) {
-        const next = (i + 1) % shrSegs;
-        const shade = i % 2 === 0 ? '#1b0918' : '#260e22';
-        draw3DFace([shrBot[i], shrBot[next], shrTop[next], shrTop[i]], shade, 'rgba(255, 15, 60, 0.5)', 1);
-      }
-
-      // Gold Magnetic Focusing Coils on Shroud
-      for (let c = 0; c < 2; c++) {
-        const wCoil = 60 + c * 10;
-        ctx.beginPath();
-        for (let a = 0; a <= 360; a += 30) {
-          const rad = (a * Math.PI) / 180;
-          const pt = project3D(...Object.values(toWorldGun(11.5 * Math.cos(rad), 11.5 * Math.sin(rad), wCoil)), width, height);
-          if (a === 0) ctx.moveTo(pt.x, pt.y);
-          else ctx.lineTo(pt.x, pt.y);
-        }
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 1.4;
         ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(pTiltHorn.x, pTiltHorn.y, 2.5 * pTiltHorn.scale, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
       }
 
-      // Stage 3: Collimator Barrel & Muzzle Shroud (w = 76 to 96, radius 8)
-      const pBrlBase = project3D(...Object.values(toWorldGun(0, 0, 76)), width, height);
-      const pMuzzle = project3D(...Object.values(toWorldGun(0, 0, 96)), width, height);
+      // ==========================================
+      // (F) RED C-SHAPED CANTILEVER ARM & OPTICAL HEAD
+      // ==========================================
+      // Distinctive Red C-arm from Tinkercad CAD attached to Servo 2 horn:
+      // Rotates with pitchAngle in Gun orthonormal frame centered at (0, pivotY, 0)
+      
+      // 1. Vertical Spine of the C-Bracket (u: -14 to -6, v: -28 to 28, w: -8 to 4)
+      const cSpine = [
+        toWorldGun(-14, -28, -8),
+        toWorldGun(-6, -28, -8),
+        toWorldGun(-6, -28, 4),
+        toWorldGun(-14, -28, 4),
+        toWorldGun(-14, 28, -8),
+        toWorldGun(-6, 28, -8),
+        toWorldGun(-6, 28, 4),
+        toWorldGun(-14, 28, 4),
+      ];
+      draw3DBox(cSpine, '#d9232a', '#9b1419', '#7f0e13', '#ff0f3d', 1.2);
+
+      // 2. Top Arm of the C-Bracket reaching forward (u: -14 to 8, v: 22 to 28, w: -8 to 30)
+      const cTopArm = [
+        toWorldGun(-14, 22, -8),
+        toWorldGun(8, 22, -8),
+        toWorldGun(8, 22, 30),
+        toWorldGun(-14, 22, 30),
+        toWorldGun(-14, 28, -8),
+        toWorldGun(8, 28, -8),
+        toWorldGun(8, 28, 30),
+        toWorldGun(-14, 28, 30),
+      ];
+      draw3DBox(cTopArm, '#d9232a', '#9b1419', '#7f0e13', '#ff0f3d', 1.2);
+
+      // 3. Bottom Arm of the C-Bracket reaching forward (u: -14 to 8, v: -28 to -22, w: -8 to 30)
+      const cBotArm = [
+        toWorldGun(-14, -28, -8),
+        toWorldGun(8, -28, -8),
+        toWorldGun(8, -28, 30),
+        toWorldGun(-14, -28, 30),
+        toWorldGun(-14, -22, -8),
+        toWorldGun(8, -22, -8),
+        toWorldGun(8, -22, 30),
+        toWorldGun(-14, -22, 30),
+      ];
+      draw3DBox(cBotArm, '#d9232a', '#9b1419', '#7f0e13', '#ff0f3d', 1.2);
+
+      // 4. Optical Camera & Laser Emitter Head cradled in the C-Bracket
+      // Main Head Housing (u: -4 to 6, v: -14 to 14, w: -2 to 26)
+      const headHousing = [
+        toWorldGun(-4, -14, -2),
+        toWorldGun(6, -14, -2),
+        toWorldGun(6, -14, 26),
+        toWorldGun(-4, -14, 26),
+        toWorldGun(-4, 14, -2),
+        toWorldGun(6, 14, -2),
+        toWorldGun(6, 14, 26),
+        toWorldGun(-4, 14, 26),
+      ];
+      draw3DBox(headHousing, '#261122', '#140712', '#1d0c1b', '#ff0f3d', 1.2);
+
+      // Camera Objective Lens (Co-Axial Vision Sensor)
+      const pCamLens = project3D(...Object.values(toWorldGun(1, 6, 26.5)), width, height);
+      if (pCamLens.visible) {
+        ctx.beginPath();
+        ctx.arc(pCamLens.x, pCamLens.y, 4.5 * pCamLens.scale, 0, Math.PI * 2);
+        ctx.fillStyle = '#061a28';
+        ctx.fill();
+        ctx.strokeStyle = '#00e5ff';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(pCamLens.x, pCamLens.y, 2.2 * pCamLens.scale, 0, Math.PI * 2);
+        ctx.fillStyle = '#ff0f3d';
+        ctx.fill();
+      }
+
+      // Laser Collimator Nozzle & Muzzle Aperture (w: 26 to 36)
+      const pBrlBase = project3D(...Object.values(toWorldGun(1, -4, 26)), width, height);
+      const pMuzzle = project3D(...Object.values(toWorldGun(1, -4, 36)), width, height);
       if (pBrlBase.visible && pMuzzle.visible) {
         ctx.beginPath();
         ctx.moveTo(pBrlBase.x, pBrlBase.y);
         ctx.lineTo(pMuzzle.x, pMuzzle.y);
         ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 8.5 * pMuzzle.scale;
+        ctx.lineWidth = 7 * pMuzzle.scale;
         ctx.lineCap = 'butt';
         ctx.stroke();
 
         ctx.strokeStyle = '#ff0f3d';
-        ctx.lineWidth = 3.5 * pMuzzle.scale;
+        ctx.lineWidth = 3.0 * pMuzzle.scale;
         ctx.stroke();
-      }
 
-      // Muzzle Aperture Face & Collimation Quartz Lens Ring (w = 96)
-      if (pMuzzle.visible) {
+        // Muzzle Aperture Face
         ctx.beginPath();
-        ctx.arc(pMuzzle.x, pMuzzle.y, 7.5 * pMuzzle.scale, 0, Math.PI * 2);
+        ctx.arc(pMuzzle.x, pMuzzle.y, 5.5 * pMuzzle.scale, 0, Math.PI * 2);
         ctx.fillStyle = '#220819';
         ctx.fill();
         ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1.8;
+        ctx.lineWidth = 1.5;
         ctx.stroke();
 
         ctx.beginPath();
-        ctx.arc(pMuzzle.x, pMuzzle.y, 4 * pMuzzle.scale, 0, Math.PI * 2);
+        ctx.arc(pMuzzle.x, pMuzzle.y, 3.0 * pMuzzle.scale, 0, Math.PI * 2);
         ctx.fillStyle = '#ff0f3d';
         ctx.fill();
       }
@@ -1189,7 +1006,7 @@ export default function DigitalTwin({
         // Layer E: 3D Helical Magnetic Confinement Filaments
         ctx.beginPath();
         const helixSteps = 24;
-        const muzW = toWorldGun(0, 0, 96);
+        const muzW = toWorldGun(1, -4, 36);
         for (let s = 0; s <= helixSteps; s++) {
           const frac = s / helixSteps;
           const hX = muzW.x + (tgt.x - muzW.x) * frac;

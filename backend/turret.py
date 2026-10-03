@@ -1,9 +1,12 @@
 """
 Agesis EYE - Pan-Tilt Turret Controller & Laser Safety Interlock
-Handles closed-loop aiming servo kinematics and strict laser safety protocols.
+Handles closed-loop aiming servo kinematics, distance-independent tracking decoupling,
+5V 2A power slew-rate limiting, and high-speed UDP network dispatch to the ESP32.
 """
 
 import time
+import math
+import socket
 import threading
 
 try:
@@ -14,24 +17,38 @@ except ImportError:
 
 
 class TurretController:
-    """Manages pan-tilt servo tracking and laser safety interlock protocols."""
-    def __init__(self, port=None, baudrate=115200, kp=0.08, servo_distance_mm=45.0):
+    """
+    Manages dual SG90 pan-tilt servo tracking, distance-independent kinematics,
+    and strict laser safety interlock protocols.
+    
+    Compatible with:
+    - 5V 2A shared power supply (slew-rate acceleration control to prevent ESP32 brownouts).
+    - Physical Tinkercad CAD mechanical assembly (orange pedestal + variable riser spar d + tilt head).
+    - Distance-independent optical tracking (IBVS invariant to inter-servo distance d).
+    - Network UDP dispatch directly to ESP32 on port 8888 and Serial UART fallback.
+    """
+    def __init__(self, port=None, baudrate=115200, kp=0.08, servo_distance_mm=45.0,
+                 esp32_ip="10.96.117.1", udp_port=8888):
         self.port = port
         self.baudrate = baudrate
         self.base_kp = kp
         self.servo_distance_mm = float(servo_distance_mm)
-        self.kp = kp  # Computed dynamically from distance
+        self.kp = kp
 
         # Pan-Tilt Angles (0 - 180 deg, Center = 90)
         self.pan_angle = 90.0
         self.tilt_angle = 90.0
         self.pan_min = 10.0
         self.pan_max = 170.0
-        self.tilt_min = 30.0
-        self.tilt_max = 150.0
+        self.tilt_min = 25.0
+        self.tilt_max = 155.0
         self.parallax_deg = 0.0
 
-        # Auto-compute limits and Kp based on servo separation distance
+        # Maximum angular velocity per update step (prevents 5V 2A supply surge)
+        self.max_slew_step_deg = 3.5
+
+        # Distance-independent kinematics configuration
+        self.focal_length_px = 280.0  # QVGA 320x240 nominal focal length
         self.recalculate_kinematics()
 
         # Calibration State
@@ -41,7 +58,7 @@ class TurretController:
         self.calibration_stop_flag = False
         self.calibration_thread = None
 
-        # Laser Safety State
+        # Laser Safety State Machine
         self.laser_armed = False
         self.laser_firing = False
         self.fire_start_time = 0.0
@@ -50,6 +67,12 @@ class TurretController:
         self.cooldown_sec = 2.0
         self.last_target_time = 0.0
 
+        # Network UDP Dispatch to ESP32
+        self.esp32_ip = esp32_ip
+        self.udp_port = int(udp_port)
+        self.udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.udp_sock.setblocking(False)
+
         # Serial Connection
         self.serial_conn = None
         self.is_simulated = True
@@ -57,30 +80,58 @@ class TurretController:
 
         self._connect_serial()
 
+    def set_esp32_endpoint(self, ip_or_url: str, port: int = 8888):
+        """Update destination ESP32 network IP for UDP command dispatch."""
+        if not ip_or_url:
+            return
+        clean_ip = ip_or_url
+        if "://" in clean_ip:
+            clean_ip = clean_ip.split("://")[1]
+        if ":" in clean_ip:
+            clean_ip = clean_ip.split(":")[0]
+        if "/" in clean_ip:
+            clean_ip = clean_ip.split("/")[0]
+
+        with self.lock:
+            self.esp32_ip = clean_ip
+            self.udp_port = port
+            self.is_simulated = False
+        print(f"[TURRET] Network UDP endpoint configured: {self.esp32_ip}:{self.udp_port}")
+
     def recalculate_kinematics(self):
         """
-        Dynamically adjusts proportional tracking gain and safe angular travel
-        envelope as a function of physical inter-servo distance (baseline D).
+        Dynamically calculates distance-independent kinematics and limits.
+        
+        Mathematical Principle:
+        When the optical sensor is mounted on the tilt C-arm (eye-in-hand),
+        angular tracking error (dx, dy) in image space is given by:
+            d_pan  = -arctan(dx / fx)
+            d_tilt =  arctan(dy / fy)
+        Azimuth (pan) is pure rotation about the vertical Z-axis, which is
+        completely independent of the vertical separation height d.
+        Elevation (tilt) rotates directly around the upper pivot, making
+        closed-loop error nulling decoupled from d.
+        
+        For 3D spatial target tracking, mechanical clearance and baseline
+        parallax at nominal engagement distance (1.2m) are auto-compensated.
         """
-        d = max(10.0, min(200.0, self.servo_distance_mm))
+        d = max(10.0, min(220.0, self.servo_distance_mm))
         self.servo_distance_mm = d
 
-        # Scale Kp inversely with sqrt of distance to normalize angular torque/lever arm
-        nominal_d = 45.0
-        scale = (nominal_d / d) ** 0.5
-        self.kp = round(max(0.02, min(0.22, self.base_kp * scale)), 4)
+        # Normalized proportional tracking gain (independent of d)
+        # Visual servoing operates on normalized image angular errors
+        self.kp = round(max(0.04, min(0.18, self.base_kp)), 4)
 
-        # Dual-servo clearance envelope auto-adjustment
-        pan_margin = max(5.0, 10.0 + max(0.0, (d - 45.0) * 0.08))
+        # Dual-servo physical clearance envelope auto-adjustment
+        pan_margin = max(5.0, 10.0 + max(0.0, (d - 45.0) * 0.06))
         self.pan_min = round(pan_margin, 1)
         self.pan_max = round(180.0 - pan_margin, 1)
 
-        tilt_margin = max(15.0, 42.0 - (d - 20.0) * 0.22)
+        tilt_margin = max(15.0, 35.0 - (d - 20.0) * 0.15)
         self.tilt_min = round(tilt_margin, 1)
         self.tilt_max = round(180.0 - tilt_margin, 1)
 
         # Baseline parallax angle at 1.2m nominal target distance
-        import math
         self.parallax_deg = round(math.degrees(math.atan2(d, 1200.0)), 2)
 
     def set_servo_distance(self, distance_mm: float):
@@ -88,7 +139,6 @@ class TurretController:
         with self.lock:
             self.servo_distance_mm = float(distance_mm)
             self.recalculate_kinematics()
-            # Ensure current angles remain within new boundaries
             self.pan_angle = max(self.pan_min, min(self.pan_max, self.pan_angle))
             self.tilt_angle = max(self.tilt_min, min(self.tilt_max, self.tilt_angle))
         return self.get_state()
@@ -127,7 +177,6 @@ class TurretController:
                 if self.calibration_stop_flag:
                     return False
                 frac = step / steps
-                # Cosine smoothing (ease-in-out)
                 smooth_frac = 0.5 * (1.0 - math.cos(math.pi * frac))
                 cur_p = p_start + (target_p - p_start) * smooth_frac
                 cur_t = t_start + (target_t - t_start) * smooth_frac
@@ -138,7 +187,6 @@ class TurretController:
                 time.sleep(delay)
             return True
 
-        import math
         try:
             # Stage 1: Neutralization (0 - 15%)
             with self.lock:
@@ -150,7 +198,7 @@ class TurretController:
 
             # Stage 2: Azimuth (Pan) Travel Calibration (15 - 45%)
             with self.lock:
-                self.calibration_stage = f"PAN THROW SWEEP [{int(self.pan_min)}-{int(self.pan_max)}]"
+                self.calibration_stage = f"PAN SWEEP [{int(self.pan_min)}-{int(self.pan_max)}]"
                 self.calibration_progress = 25
             if not interp_to(self.pan_min, 90.0, steps=30):
                 return
@@ -167,7 +215,7 @@ class TurretController:
 
             # Stage 3: Elevation (Tilt) Travel Calibration (45 - 75%)
             with self.lock:
-                self.calibration_stage = f"TILT THROW SWEEP [{int(self.tilt_min)}-{int(self.tilt_max)}]"
+                self.calibration_stage = f"TILT SWEEP [{int(self.tilt_min)}-{int(self.tilt_max)}]"
                 self.calibration_progress = 55
             if not interp_to(90.0, self.tilt_min, steps=25):
                 return
@@ -228,17 +276,26 @@ class TurretController:
             self.serial_conn = None
 
     def update_aiming(self, dx, dy, locked):
-        """Update pan/tilt angles based on optical pixel error (closed-loop)."""
+        """
+        Update pan/tilt angles based on optical pixel error (closed-loop).
+        Applies slew-rate acceleration limiting to safeguard the 5V 2A power adapter.
+        """
         now = time.time()
         with self.lock:
-            # Suspend tracking while autonomous calibration is in progress
             if self.is_calibrating:
                 return
 
-            if locked and abs(dx) > 3 or abs(dy) > 3:
-                # Delta X adjusts Pan, Delta Y adjusts Tilt
-                self.pan_angle += -dx * self.kp
-                self.tilt_angle += dy * self.kp
+            if locked and (abs(dx) > 2 or abs(dy) > 2):
+                # Calculate normalized optical correction deltas
+                raw_dpan = -dx * self.kp
+                raw_dtilt = dy * self.kp
+
+                # Slew-rate limiting for power adapter surge protection
+                step_pan = max(-self.max_slew_step_deg, min(self.max_slew_step_deg, raw_dpan))
+                step_tilt = max(-self.max_slew_step_deg, min(self.max_slew_step_deg, raw_dtilt))
+
+                self.pan_angle += step_pan
+                self.tilt_angle += step_tilt
 
                 self.pan_angle = max(self.pan_min, min(self.pan_max, self.pan_angle))
                 self.tilt_angle = max(self.tilt_min, min(self.tilt_max, self.tilt_angle))
@@ -255,7 +312,7 @@ class TurretController:
             elif now < self.cooldown_until:
                 # Cooling down after maximum fire duration
                 self._set_laser(False)
-            elif locked and abs(dx) < 15 and abs(dy) < 15:
+            elif locked and abs(dx) < 16 and abs(dy) < 16:
                 # On target: Firing allowed up to max continuous duration
                 if not self.laser_firing:
                     self.fire_start_time = now
@@ -294,6 +351,7 @@ class TurretController:
 
     def _set_laser(self, on: bool):
         self.laser_firing = on
+        # 1. UART Serial dispatch
         if self.serial_conn and self.serial_conn.is_open:
             cmd = f"L{1 if on else 0}\n"
             try:
@@ -301,11 +359,33 @@ class TurretController:
             except Exception:
                 pass
 
+        # 2. Fast UDP network dispatch
+        if self.esp32_ip:
+            pkt = f"P:{self.pan_angle:.1f},T:{self.tilt_angle:.1f},L:{1 if on else 0}\n"
+            try:
+                self.udp_sock.sendto(pkt.encode("ascii"), (self.esp32_ip, self.udp_port))
+            except Exception:
+                pass
+
     def send_angles(self, pan, tilt):
+        """Dispatch angles to ESP32 over both high-speed UDP and Serial."""
+        pan_val = round(float(pan), 1)
+        tilt_val = round(float(tilt), 1)
+        laser_val = 1 if self.laser_firing else 0
+
+        # 1. UART Serial dispatch
         if self.serial_conn and self.serial_conn.is_open:
-            cmd = f"P{int(pan)} T{int(tilt)}\n"
+            cmd = f"P{int(pan_val)} T{int(tilt_val)} L{laser_val}\n"
             try:
                 self.serial_conn.write(cmd.encode("ascii"))
+            except Exception:
+                pass
+
+        # 2. Fast UDP network dispatch
+        if self.esp32_ip:
+            pkt = f"P:{pan_val:.1f},T:{tilt_val:.1f},L:{laser_val}\n"
+            try:
+                self.udp_sock.sendto(pkt.encode("ascii"), (self.esp32_ip, self.udp_port))
             except Exception:
                 pass
 
@@ -324,6 +404,7 @@ class TurretController:
                 "calibration_stage": self.calibration_stage,
                 "laser_armed": self.laser_armed,
                 "laser_firing": self.laser_firing,
-                "is_simulated": self.is_simulated,
+                "is_simulated": self.is_simulated and not bool(self.esp32_ip),
+                "esp32_ip": self.esp32_ip,
                 "is_cooldown": time.time() < self.cooldown_until
             }

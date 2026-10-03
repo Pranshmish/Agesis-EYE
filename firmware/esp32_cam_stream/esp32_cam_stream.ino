@@ -1,5 +1,6 @@
 #include "esp_camera.h"
 #include <WiFi.h>
+#include <WiFiUdp.h>
 #include "esp_http_server.h"
 #include "soc/soc.h"
 #include "soc/rtc_cntl_reg.h"
@@ -10,12 +11,61 @@
 const char* ssid     = "Pranshul";
 const char* password = "Pranshul@007";
 
-// If WiFi fails, fallback to Access Point mode:
+// Fallback Access Point credentials:
 const char* ap_ssid  = "ESP32-CAM-TURRET";
-const char* ap_pass  = "12345678"; // 8 chars min
+const char* ap_pass  = "12345678";
 
 // ==========================================
-// 2. Camera Pin Definitions (AI-THINKER Model)
+// 2. SG90 Servo & Hardware Pin Definitions
+// ==========================================
+// Pan Servo: Base azimuth (controls 360 / 180 deg)
+#define PAN_SERVO_PIN      12
+// Tilt Servo: Elevation axis
+#define TILT_SERVO_PIN     13
+// Laser Emitter Diode / Transistor Trigger Pin
+#define LASER_PIN          14
+// Built-in Flash LED on GPIO 4
+#define FLASH_LED_PIN       4
+
+// LEDC PWM Configuration for SG90 (50Hz = 20ms period)
+#define PAN_LEDC_CH         2
+#define TILT_LEDC_CH        3
+#define SERVO_PWM_FREQ     50
+#define SERVO_RES_BITS     14   // 14-bit: 0 to 16383 counts per 20ms
+
+// SG90 Pulse Width Constants (microseconds)
+#define SERVO_MIN_US      544   // 0 degrees
+#define SERVO_MID_US     1500   // 90 degrees (Neutral)
+#define SERVO_MAX_US     2400   // 180 degrees
+
+// Set to true if Pan servo is a 360° Continuous Rotation SG90
+#define SERVO_360_PAN_MODE false
+
+// ==========================================
+// 3. 5V 2A Power & Slew-Rate Safety System
+// ==========================================
+// Shared 5V 2A adapter protection:
+// Abrupt full-speed SG90 servo acceleration can pull up to 800mA stall current per servo,
+// dipping the 5V rail and causing ESP32 brownout/WiFi crashes.
+// The slew-rate engine limits maximum angular velocity to ~120 deg/sec.
+float targetPanAngle   = 90.0;
+float targetTiltAngle  = 90.0;
+float currentPanAngle  = 90.0;
+float currentTiltAngle = 90.0;
+bool  laserState       = false;
+
+const float MAX_SLEW_STEP_DEG = 2.4;  // Max deg change per 20ms tick (~120 deg/sec)
+unsigned long lastServoUpdateMs = 0;
+
+// ==========================================
+// 4. UDP High-Speed Command Receiver (Port 8888)
+// ==========================================
+WiFiUDP udp;
+#define UDP_CMD_PORT 8888
+char udpPacketBuffer[128];
+
+// ==========================================
+// 5. Camera Pin Definitions (AI-THINKER Model)
 // ==========================================
 #define PWDN_GPIO_NUM     32
 #define RESET_GPIO_NUM    -1
@@ -35,24 +85,72 @@ const char* ap_pass  = "12345678"; // 8 chars min
 #define HREF_GPIO_NUM     23
 #define PCLK_GPIO_NUM     22
 
-// Built-in Flash LED on GPIO 4
-#define FLASH_LED_PIN      4
-
 // HTTP Server instance
 httpd_handle_t stream_httpd = NULL;
 
 #define PART_BOUNDARY "123456789000000000000987654321"
 static const char* _STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
 
-// Simple HTML page for browser viewing
+// Helper: Convert angle (0-180) to 14-bit PWM duty cycle
+uint32_t angleToDuty(float angle) {
+    angle = constrain(angle, 0.0f, 180.0f);
+    float us = SERVO_MIN_US + (angle / 180.0f) * (SERVO_MAX_US - SERVO_MIN_US);
+    // Period is 20000 us, max count is 16383 ((1<<14) - 1)
+    return (uint32_t)((us / 20000.0f) * 16383.0f);
+}
+
+// Low-level servo driver update
+void applyServoDuty() {
+    uint32_t panDuty = angleToDuty(currentPanAngle);
+    uint32_t tiltDuty = angleToDuty(currentTiltAngle);
+    ledcWrite(PAN_LEDC_CH, panDuty);
+    ledcWrite(TILT_LEDC_CH, tiltDuty);
+    digitalWrite(LASER_PIN, laserState ? HIGH : LOW);
+}
+
+// Parse Command String (Supports "P:95.5,T:88.0,L:1" and "P95 T88 L1")
+void parseCommand(const char* cmd) {
+    float p = targetPanAngle;
+    float t = targetTiltAngle;
+    int l = laserState ? 1 : 0;
+
+    const char* ptrP = strchr(cmd, 'P');
+    if (ptrP) {
+        if (*(ptrP + 1) == ':') ptrP++;
+        p = atof(ptrP + 1);
+    }
+    const char* ptrT = strchr(cmd, 'T');
+    if (ptrT) {
+        if (*(ptrT + 1) == ':') ptrT++;
+        t = atof(ptrT + 1);
+    }
+    const char* ptrL = strchr(cmd, 'L');
+    if (ptrL) {
+        if (*(ptrL + 1) == ':') ptrL++;
+        l = atoi(ptrL + 1);
+    }
+
+    targetPanAngle = constrain(p, 0.0f, 180.0f);
+    targetTiltAngle = constrain(t, 15.0f, 165.0f);
+    laserState = (l != 0);
+}
+
+// ----------------------------------------------------
+// HTTP Handlers
+// ----------------------------------------------------
 static const char INDEX_HTML[] = R"rawliteral(
-<!DOCTYPE html><html><head><title>ESP32-CAM Stream</title>
-<style>body{background:#111;color:#eee;font-family:sans-serif;text-align:center;margin:0;padding:20px}
-img{max-width:100%;border:2px solid #444;border-radius:8px;margin:10px}
-h2{color:#0f0}p{color:#888;font-size:14px}</style></head>
-<body><h2>ESP32-CAM Live Stream</h2>
+<!DOCTYPE html><html><head><title>Agesis EYE Turret Node</title>
+<style>body{background:#0e060c;color:#f5f6fa;font-family:sans-serif;text-align:center;margin:0;padding:20px}
+img{max-width:100%;border:2px solid #ff0f3d;border-radius:6px;margin:10px}
+h2{color:#ff0f3d}p{color:#888;font-size:13px}
+.badge{background:#1e0817;border:1px solid #ff0f3d;padding:6px 12px;border-radius:4px;display:inline-block;margin:5px}
+</style></head>
+<body><h2>AGESIS EYE - TACTICAL ESP32 TURRET</h2>
 <img src="/stream" />
-<p>Resolution: QVGA 320x240 | Port 81</p>
+<div class="badge">Stream: QVGA 320x240 @ Port 81</div>
+<div class="badge">UDP Receiver: Port 8888 (Active)</div>
+<div class="badge">Servos: SG90 Pan (IO12) | Tilt (IO13) | Laser (IO14)</div>
+<p>5V 2A Slew-Rate Protected | Brownout Safe</p>
 </body></html>)rawliteral";
 
 static esp_err_t index_handler(httpd_req_t *req) {
@@ -69,7 +167,6 @@ static esp_err_t capture_handler(httpd_req_t *req) {
     httpd_resp_set_type(req, "image/jpeg");
     httpd_resp_set_hdr(req, "Content-Disposition", "inline; filename=capture.jpg");
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
-    httpd_resp_set_hdr(req, "Connection", "close");
     esp_err_t res = httpd_resp_send(req, (const char *)fb->buf, fb->len);
     esp_camera_fb_return(fb);
     return res;
@@ -81,25 +178,16 @@ static esp_err_t stream_handler(httpd_req_t *req) {
     char part_buf[128];
 
     res = httpd_resp_set_type(req, _STREAM_CONTENT_TYPE);
-    if (res != ESP_OK) {
-        return res;
-    }
+    if (res != ESP_OK) return res;
 
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
     httpd_resp_set_hdr(req, "Cache-Control", "no-cache, no-store, must-revalidate");
 
-    Serial.println("[STREAM] Client connected");
-
-    int frame_cnt = 0;
-    int64_t last_report = esp_timer_get_time();
-    int send_errors = 0;
-
     while (true) {
         fb = esp_camera_fb_get();
         if (!fb) {
-            Serial.println("[STREAM] fb_get failed!");
             vTaskDelay(pdMS_TO_TICKS(10));
-            continue;  // Don't break on transient fb failures
+            continue;
         }
 
         size_t hlen = snprintf(part_buf, sizeof(part_buf),
@@ -113,27 +201,38 @@ static esp_err_t stream_handler(httpd_req_t *req) {
         esp_camera_fb_return(fb);
         fb = NULL;
 
-        if (res != ESP_OK) {
-            send_errors++;
-            Serial.printf("[STREAM] Send error #%d, client likely disconnected\n", send_errors);
-            break;  // Client gone, exit cleanly
-        }
-
-        frame_cnt++;
-        int64_t now = esp_timer_get_time();
-        if (now - last_report >= 5000000) {  // Report every 5 seconds to reduce serial overhead
-            Serial.printf("[STREAM] %d FPS | RSSI: %d dBm | heap: %u\n",
-                frame_cnt / 5, WiFi.RSSI(), ESP.getFreeHeap());
-            frame_cnt = 0;
-            last_report = now;
-        }
-
-        // Yield to WiFi/TCP stack - critical for stable streaming
+        if (res != ESP_OK) break;
         vTaskDelay(pdMS_TO_TICKS(1));
     }
-
-    Serial.println("[STREAM] Client disconnected, handler exiting cleanly");
     return res;
+}
+
+// REST Servo Control Endpoint: /servo?pan=90&tilt=90&laser=1
+static esp_err_t servo_handler(httpd_req_t *req) {
+    char* buf = NULL;
+    size_t buf_len = httpd_req_get_url_query_len(req) + 1;
+    if (buf_len > 1) {
+        buf = (char*)malloc(buf_len);
+        if (httpd_req_get_url_query_str(req, buf, buf_len) == ESP_OK) {
+            char param[32];
+            if (httpd_query_key_value(buf, "pan", param, sizeof(param)) == ESP_OK) {
+                targetPanAngle = constrain(atof(param), 0.0f, 180.0f);
+            }
+            if (httpd_query_key_value(buf, "tilt", param, sizeof(param)) == ESP_OK) {
+                targetTiltAngle = constrain(atof(param), 15.0f, 165.0f);
+            }
+            if (httpd_query_key_value(buf, "laser", param, sizeof(param)) == ESP_OK) {
+                laserState = (atoi(param) != 0);
+            }
+        }
+        free(buf);
+    }
+    char resp[128];
+    snprintf(resp, sizeof(resp), "{\"status\":\"ok\",\"pan\":%.1f,\"tilt\":%.1f,\"laser\":%d}",
+             currentPanAngle, currentTiltAngle, laserState ? 1 : 0);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+    return httpd_resp_send(req, resp, strlen(resp));
 }
 
 void startCameraServer() {
@@ -141,54 +240,55 @@ void startCameraServer() {
     config.server_port = 81;
     config.ctrl_port = 32768;
     config.stack_size = 8192;
-    config.max_open_sockets = 4;        // Room for browser + Python + snapshot
-    config.send_wait_timeout = 5;       // 5s timeout before giving up on stuck client
+    config.max_open_sockets = 5;
+    config.send_wait_timeout = 5;
     config.recv_wait_timeout = 5;
-    config.lru_purge_enable = true;     // Auto-purge stale connections
+    config.lru_purge_enable = true;
 
-    httpd_uri_t stream_uri = {
-        .uri       = "/stream",
-        .method    = HTTP_GET,
-        .handler   = stream_handler,
-        .user_ctx  = NULL
-    };
-
-    httpd_uri_t snap_uri = {
-        .uri       = "/jpg",
-        .method    = HTTP_GET,
-        .handler   = capture_handler,
-        .user_ctx  = NULL
-    };
-
-    httpd_uri_t index_uri = {
-        .uri       = "/",
-        .method    = HTTP_GET,
-        .handler   = index_handler,
-        .user_ctx  = NULL
-    };
+    httpd_uri_t stream_uri = { .uri = "/stream", .method = HTTP_GET, .handler = stream_handler, .user_ctx = NULL };
+    httpd_uri_t snap_uri   = { .uri = "/jpg",    .method = HTTP_GET, .handler = capture_handler, .user_ctx = NULL };
+    httpd_uri_t index_uri  = { .uri = "/",       .method = HTTP_GET, .handler = index_handler,   .user_ctx = NULL };
+    httpd_uri_t servo_uri  = { .uri = "/servo",   .method = HTTP_GET, .handler = servo_handler,   .user_ctx = NULL };
 
     if (httpd_start(&stream_httpd, &config) == ESP_OK) {
         httpd_register_uri_handler(stream_httpd, &index_uri);
         httpd_register_uri_handler(stream_httpd, &stream_uri);
         httpd_register_uri_handler(stream_httpd, &snap_uri);
-        Serial.println("[+] HTTP server started on port 81");
+        httpd_register_uri_handler(stream_httpd, &servo_uri);
+        Serial.println("[+] HTTP Web & Servo Server started on port 81");
     } else {
         Serial.println("[ERROR] HTTP server failed to start!");
     }
 }
 
 void setup() {
-    WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); // Disable brownout detector
+    // 1. Critical Power Stabilization: Disable brownout trigger for 5V 2A shared supply
+    WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
 
     Serial.begin(115200);
-    Serial.setDebugOutput(true);
-    Serial.println("\n--- ESP32-CAM Turret Streamer Starting ---");
-    Serial.printf("[+] Free heap: %u bytes\n", ESP.getFreeHeap());
+    Serial.setDebugOutput(false);
+    Serial.println("\n==========================================");
+    Serial.println("  AGESIS EYE - ESP32 TACTICAL TURRET NODE");
+    Serial.println("==========================================");
 
+    // 2. Configure Laser Emitter and Flash LED
     pinMode(FLASH_LED_PIN, OUTPUT);
-    digitalWrite(FLASH_LED_PIN, LOW); // Keep bright flash LED off
+    digitalWrite(FLASH_LED_PIN, LOW); // Flash off
+    pinMode(LASER_PIN, OUTPUT);
+    digitalWrite(LASER_PIN, LOW);     // Laser disarmed
 
-    // Camera hardware configuration
+    // 3. Configure SG90 Servos with ESP32 Native LEDC PWM Driver
+    ledcSetup(PAN_LEDC_CH, SERVO_PWM_FREQ, SERVO_RES_BITS);
+    ledcAttachPin(PAN_SERVO_PIN, PAN_LEDC_CH);
+
+    ledcSetup(TILT_LEDC_CH, SERVO_PWM_FREQ, SERVO_RES_BITS);
+    ledcAttachPin(TILT_SERVO_PIN, TILT_LEDC_CH);
+
+    // Initial neutral center position (90, 90)
+    applyServoDuty();
+    Serial.println("[+] SG90 Servo PWM Attached: IO12 (Pan) | IO13 (Tilt)");
+
+    // 4. Camera Hardware Setup
     camera_config_t config;
     config.ledc_channel = LEDC_CHANNEL_0;
     config.ledc_timer   = LEDC_TIMER_0;
@@ -208,61 +308,39 @@ void setup() {
     config.pin_sccb_scl = SIOC_GPIO_NUM;
     config.pin_pwdn     = PWDN_GPIO_NUM;
     config.pin_reset    = RESET_GPIO_NUM;
-    config.xclk_freq_hz = 10000000;    // 10 MHz - much more stable than 20MHz on USB power
+    config.xclk_freq_hz = 10000000; // 10MHz rock-solid clock
     config.pixel_format = PIXFORMAT_JPEG;
+    config.frame_size   = FRAMESIZE_QVGA; // 320x240 for ultra-high FPS
+    config.jpeg_quality = 14;
+    config.fb_count     = psramFound() ? 2 : 1;
+    config.fb_location  = psramFound() ? CAMERA_FB_IN_PSRAM : CAMERA_FB_IN_DRAM;
     config.grab_mode    = CAMERA_GRAB_LATEST;
 
-    // Check for PSRAM
-    if (psramFound()) {
-        Serial.println("[+] PSRAM detected! Using QVGA double buffered.");
-        config.frame_size   = FRAMESIZE_QVGA;
-        config.jpeg_quality = 15;           // Slightly lower quality = less power draw + smaller frames
-        config.fb_count     = 2;
-        config.fb_location  = CAMERA_FB_IN_PSRAM;
-        config.grab_mode    = CAMERA_GRAB_LATEST;
-    } else {
-        Serial.println("[-] No PSRAM detected! Using QVGA in DRAM.");
-        config.frame_size   = FRAMESIZE_QVGA;
-        config.jpeg_quality = 15;
-        config.fb_count     = 1;
-        config.fb_location  = CAMERA_FB_IN_DRAM;
-        config.grab_mode    = CAMERA_GRAB_WHEN_EMPTY;
-    }
-
-    // Initialize Camera
     esp_err_t err = esp_camera_init(&config);
     if (err != ESP_OK) {
-        Serial.printf("[ERROR] Camera init failed with error 0x%x\n", err);
-        delay(3000);
+        Serial.printf("[ERROR] Camera init failed: 0x%x\n", err);
+        delay(2000);
         ESP.restart();
-        return;
     }
-    Serial.println("[+] Camera initialized successfully");
+    Serial.println("[+] Camera Sensor Initialized (QVGA 320x240)");
 
-    // Camera sensor tuning for consistent exposure & high framerate
+    // Camera sensor optimizations
     sensor_t * s = esp_camera_sensor_get();
     if (s != NULL) {
         s->set_brightness(s, 1);
         s->set_contrast(s, 1);
         s->set_saturation(s, 0);
-        s->set_whitebal(s, 1);
-        s->set_awb_gain(s, 1);
-        s->set_wb_mode(s, 0);
-        s->set_exposure_ctrl(s, 1);
-        s->set_aec2(s, 0);
-        s->set_ae_level(s, 0);
-        s->set_gain_ctrl(s, 1);
         s->set_gainceiling(s, (gainceiling_t)4);
     }
 
-    // Connect to WiFi
+    // 5. Connect to WiFi
     Serial.printf("[*] Connecting to WiFi: %s\n", ssid);
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid, password);
 
     int timeout = 0;
-    while (WiFi.status() != WL_CONNECTED && timeout < 30) {
-        delay(500);
+    while (WiFi.status() != WL_CONNECTED && timeout < 25) {
+        delay(400);
         Serial.print(".");
         timeout++;
     }
@@ -270,45 +348,87 @@ void setup() {
     if (WiFi.status() == WL_CONNECTED) {
         WiFi.setSleep(false);
         WiFi.setTxPower(WIFI_POWER_17dBm);
-        Serial.println("\n[+] WiFi Connected successfully!");
-        Serial.printf("[+] Signal Strength (RSSI): %d dBm\n", WiFi.RSSI());
-        Serial.print("[+] Camera Stream URL: http://");
-        Serial.print(WiFi.localIP());
-        Serial.println(":81/stream");
+        Serial.println("\n[+] WiFi Connected!");
+        Serial.print("[+] IP Address: ");
+        Serial.println(WiFi.localIP());
     } else {
         Serial.println("\n[-] WiFi connection failed. Starting SoftAP fallback...");
         WiFi.mode(WIFI_AP);
         WiFi.softAP(ap_ssid, ap_pass);
-        Serial.print("[+] Hotspot created: ");
-        Serial.println(ap_ssid);
-        Serial.print("[+] Camera Stream URL: http://");
-        Serial.print(WiFi.softAPIP());
-        Serial.println(":81/stream");
+        Serial.print("[+] SoftAP IP: ");
+        Serial.println(WiFi.softAPIP());
     }
 
-    // Start MJPEG Streaming Web Server on Port 81
+    // 6. Start High-Speed UDP Listener
+    udp.begin(UDP_CMD_PORT);
+    Serial.printf("[+] Ultra-Fast UDP Command Receiver Listening on Port %d\n", UDP_CMD_PORT);
+
+    // 7. Start HTTP MJPEG Streaming & Control Server
     startCameraServer();
-    Serial.println("\n========================================");
-    Serial.println("[+] STREAM READY AND LISTENING ON PORT 81");
-    Serial.println("========================================\n");
+    Serial.println("[+] AGESIS EYE READY FOR FULL AUTONOMOUS TRACKING\n");
 }
 
 void loop() {
-    // Watchdog: if WiFi drops, reconnect
-    if (WiFi.status() != WL_CONNECTED) {
-        Serial.println("[!] WiFi disconnected, reconnecting...");
-        WiFi.reconnect();
-        int retry = 0;
-        while (WiFi.status() != WL_CONNECTED && retry < 20) {
-            delay(500);
-            retry++;
-        }
-        if (WiFi.status() == WL_CONNECTED) {
-            Serial.printf("[+] WiFi reconnected! RSSI: %d dBm\n", WiFi.RSSI());
-        } else {
-            Serial.println("[!] WiFi reconnect failed, restarting...");
-            ESP.restart();
+    unsigned long now = millis();
+
+    // ====================================================
+    // A. High-Speed Sub-Millisecond UDP Command Processing
+    // ====================================================
+    int packetSize = udp.parsePacket();
+    if (packetSize > 0) {
+        int len = udp.read(udpPacketBuffer, sizeof(udpPacketBuffer) - 1);
+        if (len > 0) {
+            udpPacketBuffer[len] = '\0';
+            parseCommand(udpPacketBuffer);
         }
     }
-    vTaskDelay(pdMS_TO_TICKS(5000));
+
+    // ====================================================
+    // B. Direct UART Serial Command Listener (Fallback)
+    // ====================================================
+    if (Serial.available()) {
+        String s = Serial.readStringUntil('\n');
+        s.trim();
+        if (s.length() > 0) {
+            parseCommand(s.c_str());
+        }
+    }
+
+    // ====================================================
+    // C. 5V 2A Slew-Rate Smooth Motion Engine (50 Hz Tick)
+    // ====================================================
+    // Interpolates angle smoothly to eliminate current spikes and prevent brownouts
+    if (now - lastServoUpdateMs >= 20) {
+        lastServoUpdateMs = now;
+
+        // Pan axis smooth slew
+        float dPan = targetPanAngle - currentPanAngle;
+        if (abs(dPan) > MAX_SLEW_STEP_DEG) {
+            currentPanAngle += (dPan > 0) ? MAX_SLEW_STEP_DEG : -MAX_SLEW_STEP_DEG;
+        } else {
+            currentPanAngle = targetPanAngle;
+        }
+
+        // Tilt axis smooth slew
+        float dTilt = targetTiltAngle - currentTiltAngle;
+        if (abs(dTilt) > MAX_SLEW_STEP_DEG) {
+            currentTiltAngle += (dTilt > 0) ? MAX_SLEW_STEP_DEG : -MAX_SLEW_STEP_DEG;
+        } else {
+            currentTiltAngle = targetTiltAngle;
+        }
+
+        // Apply calibrated PWM to SG90 servos
+        applyServoDuty();
+    }
+
+    // ====================================================
+    // D. WiFi Watchdog
+    // ====================================================
+    if (WiFi.status() != WL_CONNECTED && WiFi.getMode() == WIFI_MODE_STA) {
+        vTaskDelay(pdMS_TO_TICKS(500));
+        WiFi.reconnect();
+    }
+
+    // Yield CPU to FreeRTOS
+    vTaskDelay(pdMS_TO_TICKS(2));
 }
