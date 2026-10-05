@@ -72,3 +72,4 @@ raw_*/
 *.gz
 esp32_snap_*.jpg
 auto_label_preview.jpg
+backend/snapshots/

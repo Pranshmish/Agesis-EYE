@@ -83,9 +83,11 @@ class TurretController:
 
     def set_esp32_endpoint(self, ip_or_url: str, port: int = 8888):
         """Update destination ESP32 network IP for UDP command dispatch."""
-        if not ip_or_url:
+        if not ip_or_url or str(ip_or_url).isdigit() or str(ip_or_url) in ("0", "1", "2", "webcam"):
+            with self.lock:
+                self.esp32_ip = None
             return
-        clean_ip = ip_or_url
+        clean_ip = str(ip_or_url)
         if "://" in clean_ip:
             clean_ip = clean_ip.split("://")[1]
         if ":" in clean_ip:
@@ -436,7 +438,7 @@ class TurretController:
                 "calibration_stage": self.calibration_stage,
                 "laser_armed": self.laser_armed,
                 "laser_firing": self.laser_firing,
-                "is_simulated": self.is_simulated and not bool(self.esp32_ip),
+                "is_simulated": (not self.serial_conn or not getattr(self.serial_conn, 'is_open', False)) and not bool(self.esp32_ip),
                 "esp32_ip": self.esp32_ip,
                 "is_cooldown": time.time() < self.cooldown_until
             }

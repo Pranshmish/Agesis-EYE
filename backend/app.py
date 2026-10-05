@@ -51,8 +51,9 @@ if os.path.exists(CONFIG_PATH):
 # Initialize Components
 stream_reader = ZeroLagStreamReader(default_stream_url)
 tracker = BalloonTracker(MODEL_PATH, imgsz=384, conf=0.35, enhance=False)
-turret = TurretController()
-turret.set_esp32_endpoint(default_stream_url)
+turret = TurretController(esp32_ip=None)
+if str(default_stream_url).startswith("http"):
+    turret.set_esp32_endpoint(default_stream_url)
 
 app = FastAPI(title="Agesis EYE Autonomous Turret")
 
@@ -190,7 +191,10 @@ def update_config(cfg: ConfigModel):
     if cfg.source is not None and cfg.source != stream_reader.source:
         stream_reader.release()
         stream_reader = ZeroLagStreamReader(cfg.source)
-        turret.set_esp32_endpoint(cfg.source)
+        if str(cfg.source).startswith("http"):
+            turret.set_esp32_endpoint(cfg.source)
+        else:
+            turret.set_esp32_endpoint(None)
         try:
             with open(CONFIG_PATH, "w") as f:
                 json.dump({"stream_url": cfg.source}, f, indent=2)

@@ -25,10 +25,17 @@ if %ERRORLEVEL% neq 0 (
 )
 
 echo.
-echo [*] Flashing ESP32 directly on %PORT%...
-echo     (Note: If Connecting... appears, hold the BOOT button on the ESP32 for 1 second)
+echo ========================================================
+echo   READY TO FLASH ON %PORT%
+echo   IMPORTANT: When "Connecting..." appears below:
+echo   PRESS AND HOLD the [BOOT] button on the ESP32 board
+echo   until you see "Writing at 0x00010000..." or a percentage!
+echo   (Tip: If servos are plugged in, temporarily disconnect
+echo    their 5V/VIN wire so the USB reset circuit can trigger)
+echo ========================================================
 echo.
-"%CLI%" upload -p %PORT% --fqbn esp32:esp32:esp32 --upload-property upload.speed=115200 "%SKETCH_DIR%"
+
+"%CLI%" upload -p %PORT% --fqbn esp32:esp32:esp32 --upload-property upload.speed=460800 "%SKETCH_DIR%"
 
 if %ERRORLEVEL% equ 0 (
     echo.
@@ -37,5 +44,6 @@ if %ERRORLEVEL% equ 0 (
     echo ========================================================
 ) else (
     echo.
-    echo [!] Upload failed. If Connecting... timed out, hold the BOOT button on the ESP32 board during connection.
+    echo [*] Retrying at 115200 baud... Remember to HOLD THE BOOT BUTTON!
+    "%CLI%" upload -p %PORT% --fqbn esp32:esp32:esp32 --upload-property upload.speed=115200 "%SKETCH_DIR%"
 )
