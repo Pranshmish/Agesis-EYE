@@ -11,6 +11,7 @@ import threading
 
 try:
     import serial
+    import serial.tools.list_ports
     HAS_SERIAL = True
 except ImportError:
     HAS_SERIAL = False
@@ -262,7 +263,25 @@ class TurretController:
                 self.calibration_stage = "ERROR"
 
     def _connect_serial(self):
-        if not HAS_SERIAL or not self.port:
+        if not HAS_SERIAL:
+            self.is_simulated = True
+            return
+
+        if not self.port:
+            try:
+                for p in serial.tools.list_ports.comports():
+                    desc = p.description.lower()
+                    if any(k in desc for k in ["cp210", "ch340", "ftdi", "uart", "usb-serial", "serial"]):
+                        self.port = p.device
+                        break
+                if not self.port:
+                    non_bt = [p for p in serial.tools.list_ports.comports() if "bluetooth" not in p.description.lower()]
+                    if non_bt:
+                        self.port = non_bt[0].device
+            except Exception:
+                pass
+
+        if not self.port:
             self.is_simulated = True
             return
 
@@ -270,8 +289,10 @@ class TurretController:
             self.serial_conn = serial.Serial(self.port, self.baudrate, timeout=0.1)
             time.sleep(1.0)
             self.is_simulated = False
+            print(f"[TURRET] Hardware USB Serial connected on {self.port} at {self.baudrate} baud.")
             self.send_angles(90, 90)
-        except Exception:
+        except Exception as e:
+            print(f"[TURRET] Serial connection on {self.port} failed ({e}), running in network/simulated mode.")
             self.is_simulated = True
             self.serial_conn = None
 
@@ -373,13 +394,24 @@ class TurretController:
         tilt_val = round(float(tilt), 1)
         laser_val = 1 if self.laser_firing else 0
 
+        # Auto-reconnect to Serial if port was temporarily locked by Arduino Serial Monitor
+        if (not self.serial_conn or not getattr(self.serial_conn, 'is_open', False)) and HAS_SERIAL:
+            now = time.time()
+            if getattr(self, "_last_reconnect_attempt", 0) + 2.5 < now:
+                self._last_reconnect_attempt = now
+                self._connect_serial()
+
         # 1. UART Serial dispatch
         if self.serial_conn and self.serial_conn.is_open:
             cmd = f"P{int(pan_val)} T{int(tilt_val)} L{laser_val}\n"
             try:
                 self.serial_conn.write(cmd.encode("ascii"))
-            except Exception:
-                pass
+            except Exception as e:
+                try:
+                    self.serial_conn.close()
+                except Exception:
+                    pass
+                self.serial_conn = None
 
         # 2. Fast UDP network dispatch
         if self.esp32_ip:

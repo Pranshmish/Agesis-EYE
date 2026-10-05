@@ -76,8 +76,18 @@ class ZeroLagStreamReader:
 
     def _cv2_worker(self):
         src = int(self.source) if str(self.source).isdigit() else self.source
-        cap = cv2.VideoCapture(src)
-        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        if isinstance(src, int):
+            # On Windows, cv2.CAP_DSHOW eliminates MSMF frame buffering latency
+            cap = cv2.VideoCapture(src, cv2.CAP_DSHOW)
+            cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+            cap.set(cv2.CAP_PROP_FPS, 30)
+            cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        else:
+            cap = cv2.VideoCapture(src)
+            cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+
         self.connected = cap.isOpened()
         fc, t0 = 0, time.time()
 

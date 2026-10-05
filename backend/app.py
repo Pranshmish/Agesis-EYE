@@ -7,6 +7,7 @@ import os
 import sys
 import json
 import time
+import threading
 import asyncio
 import cv2
 import numpy as np
@@ -80,35 +81,44 @@ latest_telemetry = {
 }
 
 
-def mjpeg_generator():
-    """Continuously processes freshest frame, runs YOLO, updates turret, and yields MJPEG."""
-    global latest_telemetry
-    encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 80]
+# Shared state for decoupled ultra-low latency tracking & streaming
+latest_jpeg_bytes = None
+latest_frame_id = 0
+frame_lock = threading.Lock()
+new_frame_event = threading.Event()
+
+
+def tracking_pipeline_worker():
+    """Continuous high-frequency tracking pipeline running independently of client connections."""
+    global latest_telemetry, latest_jpeg_bytes, latest_frame_id
+    encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 75]
+
+    standby = cv2.imread(os.path.join(BACKEND_DIR, "standby.jpg"))
+    if standby is None:
+        standby = 20 * np.ones((240, 320, 3), dtype=np.uint8)
+        cv2.putText(standby, "ACQUIRING STREAM...", (35, 125),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (35, 25, 255), 1)
+    _, standby_jpeg = cv2.imencode(".jpg", standby, encode_param)
+    standby_bytes = standby_jpeg.tobytes()
 
     while True:
         frame = stream_reader.get_latest()
         if frame is None:
-            # Standby blank frame with connecting status
             latest_telemetry.update({
                 **turret.get_state(),
                 "connected": stream_reader.connected,
                 "cam_fps": round(stream_reader.fps, 1),
             })
-            standby = cv2.imread(os.path.join(BACKEND_DIR, "standby.jpg"))
-            if standby is None:
-                standby = 20 * np.ones((240, 320, 3), dtype=np.uint8)
-                cv2.putText(standby, "ACQUIRING STREAM...", (35, 125),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (35, 25, 255), 1)
-            _, jpeg = cv2.imencode(".jpg", standby, encode_param)
-            yield (b"--frame\r\n"
-                   b"Content-Type: image/jpeg\r\n\r\n" + jpeg.tobytes() + b"\r\n")
-            time.sleep(0.04)
+            with frame_lock:
+                latest_jpeg_bytes = standby_bytes
+                latest_frame_id += 1
+            new_frame_event.set()
+            time.sleep(0.03)
             continue
 
         annotated, tele = tracker.process_frame(frame)
         turret.update_aiming(tele["dx"], tele["dy"], tele["locked"])
 
-        # Update cached state
         turret_state = turret.get_state()
         latest_telemetry = {
             **tele,
@@ -119,12 +129,33 @@ def mjpeg_generator():
 
         ret, jpeg = cv2.imencode(".jpg", annotated, encode_param)
         if ret:
+            with frame_lock:
+                latest_jpeg_bytes = jpeg.tobytes()
+                latest_frame_id += 1
+            new_frame_event.set()
+        time.sleep(0.002)
+
+
+# Start tracking pipeline thread immediately
+_tracking_thread = threading.Thread(target=tracking_pipeline_worker, daemon=True)
+_tracking_thread.start()
+
+
+def mjpeg_generator():
+    """Zero-lag MJPEG stream generator. Yields only freshest frame, instantly dropping buffer backlog."""
+    global latest_jpeg_bytes, latest_frame_id
+    last_sent_id = -1
+
+    while True:
+        new_frame_event.wait(timeout=0.04)
+        with frame_lock:
+            curr_id = latest_frame_id
+            curr_bytes = latest_jpeg_bytes
+
+        if curr_bytes is not None and curr_id != last_sent_id:
+            last_sent_id = curr_id
             yield (b"--frame\r\n"
-                   b"Content-Type: image/jpeg\r\n\r\n" + jpeg.tobytes() + b"\r\n")
-        time.sleep(0.005)
-
-
-import numpy as np
+                   b"Content-Type: image/jpeg\r\n\r\n" + curr_bytes + b"\r\n")
 
 
 @app.get("/api/stream")

@@ -35,6 +35,7 @@ wheels/
 *.dylib
 *.bin
 *.elf
+firmware/tools/
 
 # IDE & Editor Configurations
 .vscode/
