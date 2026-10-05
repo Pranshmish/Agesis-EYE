@@ -1,0 +1,11 @@
+{
+  "servo_distance_mm": 55.0,
+  "base_height_mm": 190.0,
+  "invert_pan": false,
+  "invert_tilt": false,
+  "kp": 0.04,
+  "pan_offset": 0.0,
+  "tilt_offset": 4.0,
+  "smooth_factor": 0.22,
+  "deadband_px": 5.0
+}

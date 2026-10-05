@@ -91,6 +91,9 @@ httpd_handle_t stream_httpd = NULL;
 #define PART_BOUNDARY "123456789000000000000987654321"
 static const char* _STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
 
+bool serialStreamActive = false;
+unsigned long lastSerialFrameMs = 0;
+
 // Helper: Convert angle (0-180) to 14-bit PWM duty cycle
 uint32_t angleToDuty(float angle) {
     angle = constrain(angle, 0.0f, 180.0f);
@@ -103,13 +106,29 @@ uint32_t angleToDuty(float angle) {
 void applyServoDuty() {
     uint32_t panDuty = angleToDuty(currentPanAngle);
     uint32_t tiltDuty = angleToDuty(currentTiltAngle);
+#if ESP_ARDUINO_VERSION >= ESP_ARDUINO_VERSION_VAL(3, 0, 0)
+    ledcWrite(PAN_SERVO_PIN, panDuty);
+    ledcWrite(TILT_SERVO_PIN, tiltDuty);
+#else
     ledcWrite(PAN_LEDC_CH, panDuty);
     ledcWrite(TILT_LEDC_CH, tiltDuty);
+#endif
     digitalWrite(LASER_PIN, laserState ? HIGH : LOW);
 }
 
-// Parse Command String (Supports "P:95.5,T:88.0,L:1" and "P95 T88 L1")
+// Parse Command String (Supports "P:95.5,T:88.0,L:1" and "P95 T88 L1" and "STREAM_ON")
 void parseCommand(const char* cmd) {
+    if (strstr(cmd, "STREAM_ON") != NULL || strstr(cmd, "CAM_ON") != NULL) {
+        serialStreamActive = true;
+        Serial.println("[ACK] SERIAL_STREAM_ON");
+        return;
+    }
+    if (strstr(cmd, "STREAM_OFF") != NULL || strstr(cmd, "CAM_OFF") != NULL) {
+        serialStreamActive = false;
+        Serial.println("[ACK] SERIAL_STREAM_OFF");
+        return;
+    }
+
     float p = targetPanAngle;
     float t = targetTiltAngle;
     int l = laserState ? 1 : 0;
@@ -278,11 +297,15 @@ void setup() {
     digitalWrite(LASER_PIN, LOW);     // Laser disarmed
 
     // 3. Configure SG90 Servos with ESP32 Native LEDC PWM Driver
+#if ESP_ARDUINO_VERSION >= ESP_ARDUINO_VERSION_VAL(3, 0, 0)
+    ledcAttach(PAN_SERVO_PIN, SERVO_PWM_FREQ, SERVO_RES_BITS);
+    ledcAttach(TILT_SERVO_PIN, SERVO_PWM_FREQ, SERVO_RES_BITS);
+#else
     ledcSetup(PAN_LEDC_CH, SERVO_PWM_FREQ, SERVO_RES_BITS);
     ledcAttachPin(PAN_SERVO_PIN, PAN_LEDC_CH);
-
     ledcSetup(TILT_LEDC_CH, SERVO_PWM_FREQ, SERVO_RES_BITS);
     ledcAttachPin(TILT_SERVO_PIN, TILT_LEDC_CH);
+#endif
 
     // Initial neutral center position (90, 90)
     applyServoDuty();
@@ -391,6 +414,21 @@ void loop() {
         s.trim();
         if (s.length() > 0) {
             parseCommand(s.c_str());
+        }
+    }
+
+    // ====================================================
+    // B2. High-Speed USB Serial Video Streaming
+    // ====================================================
+    if (serialStreamActive && (now - lastSerialFrameMs >= 40)) { // ~25 FPS
+        lastSerialFrameMs = now;
+        camera_fb_t * fb = esp_camera_fb_get();
+        if (fb) {
+            Serial.printf("\n--FRAME:%u\n", fb->len);
+            Serial.write(fb->buf, fb->len);
+            Serial.print("\n--END\n");
+            Serial.flush();
+            esp_camera_fb_return(fb);
         }
     }
 

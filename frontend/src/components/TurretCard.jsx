@@ -4,27 +4,73 @@ export default function TurretCard({
   telemetry,
   onNudge,
   onCenter,
+  onHome,
   onDistanceChange,
+  onStructureUpdate,
+  onZeroTilt,
+  onToggleTracking,
+  onToggleManualLaser,
   onStartCalibration,
   onStopCalibration,
+  onStartRLAlignment,
+  onStopRLAlignment,
+  onApplyRLCalibration,
   onOpenDigitalTwin,
 }) {
   const pan = telemetry?.pan !== undefined ? Number(telemetry.pan).toFixed(1) : '90.0';
   const tilt = telemetry?.tilt !== undefined ? Number(telemetry.tilt).toFixed(1) : '90.0';
   const isSimulated = telemetry?.is_simulated ?? true;
 
-  const servoDistance = telemetry?.servo_distance_mm ?? 45.0;
+  const servoDistance = telemetry?.servo_distance_mm ?? 55.0;
+  const baseHeight = telemetry?.base_height_mm ?? 190.0;
   const isCalibrating = !!telemetry?.is_calibrating;
   const calProgress = telemetry?.calibration_progress ?? 0;
   const calStage = telemetry?.calibration_stage || 'IDLE';
 
+  const rlActive = !!telemetry?.rl_active;
+  const rlStage = telemetry?.rl_stage || 'IDLE';
+  const rlReward = telemetry?.rl_reward !== undefined ? Number(telemetry.rl_reward).toFixed(1) : '0.0';
+  const rlAlignmentPct = telemetry?.rl_alignment_pct !== undefined ? Number(telemetry.rl_alignment_pct).toFixed(0) : '0';
+  const rlStreak = telemetry?.rl_streak ?? 0;
+  const rlDist = telemetry?.rl_dist_px !== undefined ? Number(telemetry.rl_dist_px).toFixed(1) : '0.0';
+
+  const invertPan = telemetry?.invert_pan !== false;
+  const invertTilt = !!telemetry?.invert_tilt;
+  const isTracking = telemetry?.tracking_enabled !== false;
+  const isManualLaser = !!telemetry?.manual_laser;
+  const smoothFactor = telemetry?.smooth_factor ?? 0.25;
+  const kpVal = telemetry?.kp ?? 0.06;
+  const tiltOffset = telemetry?.tilt_offset !== undefined ? Number(telemetry.tilt_offset) : 0.0;
+
   const [localDistance, setLocalDistance] = useState(servoDistance);
+  const [localSmooth, setLocalSmooth] = useState(smoothFactor);
+  const [localKp, setLocalKp] = useState(kpVal);
+  const [localTiltOffset, setLocalTiltOffset] = useState(tiltOffset);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   useEffect(() => {
     if (telemetry?.servo_distance_mm !== undefined) {
       setLocalDistance(telemetry.servo_distance_mm);
     }
   }, [telemetry?.servo_distance_mm]);
+
+  useEffect(() => {
+    if (telemetry?.smooth_factor !== undefined) {
+      setLocalSmooth(telemetry.smooth_factor);
+    }
+  }, [telemetry?.smooth_factor]);
+
+  useEffect(() => {
+    if (telemetry?.kp !== undefined) {
+      setLocalKp(telemetry.kp);
+    }
+  }, [telemetry?.kp]);
+
+  useEffect(() => {
+    if (telemetry?.tilt_offset !== undefined) {
+      setLocalTiltOffset(Number(telemetry.tilt_offset));
+    }
+  }, [telemetry?.tilt_offset]);
 
   const handleSliderChange = (e) => {
     const val = parseFloat(e.target.value);
@@ -44,24 +90,56 @@ export default function TurretCard({
     }
   };
 
+  const togglePanInvert = () => {
+    if (onStructureUpdate) {
+      onStructureUpdate({ invert_pan: !invertPan });
+    }
+  };
+
+  const toggleTiltInvert = () => {
+    if (onStructureUpdate) {
+      onStructureUpdate({ invert_tilt: !invertTilt });
+    }
+  };
+
+  const handleSmoothCommit = () => {
+    if (onStructureUpdate) {
+      onStructureUpdate({ smooth_factor: localSmooth });
+    }
+  };
+
+  const handleKpCommit = () => {
+    if (onStructureUpdate) {
+      onStructureUpdate({ kp: localKp });
+    }
+  };
+
+  const handleTiltOffsetCommit = (val) => {
+    const targetVal = typeof val === 'number' ? val : localTiltOffset;
+    if (onStructureUpdate) {
+      onStructureUpdate({ tilt_offset: targetVal });
+    }
+  };
+
+  const handleNudgeTiltOffset = (delta) => {
+    const nextVal = Math.round((localTiltOffset + delta) * 10) / 10;
+    setLocalTiltOffset(nextVal);
+    if (onStructureUpdate) {
+      onStructureUpdate({ tilt_offset: nextVal });
+    }
+  };
+
   // Convert angles to rotation degrees for SVG elements
   const panNum = parseFloat(pan);
   const tiltNum = parseFloat(tilt);
   const panRot = panNum - 90; // Azimuth deviation
   const tiltRot = (90 - tiltNum) * 0.9; // Elevation pitch
 
-  // Proportional height mapping for clean blueprint aesthetics (no overlapping text!)
+  // Proportional height mapping for clean blueprint aesthetics
   const normDist = Math.max(15, Math.min(150, localDistance));
   const linkLength = 22 + ((normDist - 15) / 135) * 44; // 22px to 66px
   const basePanY = 120;
   const tiltServoY = basePanY - linkLength;
-
-  // Optics laser head calculation
-  const tiltRad = (tiltRot * Math.PI) / 180;
-  const headEndX = 100 + Math.cos(tiltRad) * 32;
-  const headEndY = tiltServoY - Math.sin(tiltRad) * 32;
-  const laserBeamEndX = 270;
-  const laserBeamEndY = headEndY - (laserBeamEndX - headEndX) * Math.tan(tiltRad * 0.4);
 
   return (
     <div className="tactical-card turret-card-fixed">
@@ -80,7 +158,7 @@ export default function TurretCard({
       </div>
 
       <div className="card-body">
-        {/* Tactical Blueprint Schematic (Clean, Crisp, No Collisions) */}
+        {/* Tactical Blueprint Schematic */}
         <div className="tactical-blueprint-box">
           <svg className="blueprint-svg" viewBox="0 0 320 155">
             <defs>
@@ -152,35 +230,29 @@ export default function TurretCard({
             </text>
 
             {/* Pivoting Tilt Arm, Optics Head & Laser Sightline */}
-            <g transform={`translate(100, ${tiltServoY}) rotate(${-tiltRot})`} className="servo-motion-element">
-              {/* Rotating arm to optics */}
+            <g transform={`translate(100, ${tiltServoY}) rotate(${tiltRot})`} className="servo-motion-element">
               <line x1="0" y1="0" x2="26" y2="0" stroke="#f5f6fa" strokeWidth="3" strokeLinecap="round" />
-              {/* Laser Optics Housing */}
               <rect x="22" y="-5" width="10" height="10" rx="2" fill="#200d18" stroke="#ff0f3d" strokeWidth="1.2" />
               <circle cx="27" cy="0" r="2.5" fill="#ff0f3d" />
-              {/* Collimated Laser Beam */}
               <line
                 x1="32"
                 y1="0"
                 x2="170"
                 y2="0"
                 stroke="url(#opticsLaserGrad)"
-                strokeWidth="2.5"
+                strokeWidth={isManualLaser ? '3.5' : '2.5'}
                 strokeLinecap="round"
               />
-              <circle cx="170" cy="0" r="2" fill="#ff0f3d" opacity="0.8" />
+              <circle cx="170" cy="0" r={isManualLaser ? 3 : 2} fill="#ff0f3d" opacity="0.9" />
             </g>
 
-            {/* DYNAMIC CALIPER MEASUREMENT (Positioned cleanly on the right) */}
+            {/* DYNAMIC CALIPER MEASUREMENT */}
             <g transform="translate(142, 0)">
-              {/* Top & Bottom caliper ticks */}
               <line x1="0" y1={tiltServoY} x2="14" y2={tiltServoY} stroke="#ffaa33" strokeWidth="1" />
               <line x1="0" y1={basePanY} x2="14" y2={basePanY} stroke="#ffaa33" strokeWidth="1" />
-              {/* Vertical dimension line with arrowheads */}
               <line x1="7" y1={tiltServoY + 2} x2="7" y2={basePanY - 2} stroke="#ffaa33" strokeWidth="1.2" />
               <polygon points={`4,${tiltServoY + 5} 10,${tiltServoY + 5} 7,${tiltServoY}`} fill="#ffaa33" />
               <polygon points={`4,${basePanY - 5} 10,${basePanY - 5} 7,${basePanY}`} fill="#ffaa33" />
-              {/* Dimension Readout Badge */}
               <rect
                 x="15"
                 y={(tiltServoY + basePanY) / 2 - 9}
@@ -204,7 +276,7 @@ export default function TurretCard({
               </text>
             </g>
 
-            {/* CURRENT ANGLES HUD OVERLAY (Top right corner) */}
+            {/* CURRENT ANGLES HUD OVERLAY */}
             <g transform="translate(242, 14)">
               <rect x="-8" y="-6" width="76" height="46" rx="4" fill="rgba(10, 4, 8, 0.88)" stroke="rgba(255, 15, 60, 0.25)" strokeWidth="1" />
               <text x="30" y="6" textAnchor="middle" fill="#6b555d" fontSize="6.5" fontFamily="JetBrains Mono">
@@ -220,21 +292,194 @@ export default function TurretCard({
           </svg>
         </div>
 
-        {/* DISTANCE ADJUSTMENT CONTROLS */}
+        {/* CALIBRATION DECK: TARGET LOCK, SIGHTING LASER & DIRECTION INVERSION */}
+        <div className="calibration-deck">
+          <div className="cal-header-row">
+            <span className="cal-title">TARGET SIGHTING & CALIBRATION</span>
+            <span className="cal-status-tag">
+              {isTracking ? 'TRACKING ACTIVE' : 'TARGET FROZEN'}
+            </span>
+          </div>
+
+          <div className="cal-grid-2col">
+            {/* Target Lock / Freeze */}
+            <button
+              type="button"
+              className={`cal-toggle-btn ${!isTracking ? 'active' : ''}`}
+              onClick={onToggleTracking}
+              title="Freeze turret position to inspect balloon target alignment"
+            >
+              <span className="cal-btn-title">TARGET LOCK</span>
+              <span className="cal-btn-state">{!isTracking ? 'HOLD / FROZEN' : 'ACTIVE'}</span>
+            </button>
+
+            {/* Manual Sighting Laser */}
+            <button
+              type="button"
+              className={`cal-toggle-btn ${isManualLaser ? 'active' : ''}`}
+              onClick={onToggleManualLaser}
+              title="Continuous Laser ON for physical targeting calibration"
+            >
+              <span className="cal-btn-title">SIGHTING LASER</span>
+              <span className="cal-btn-state">{isManualLaser ? 'EMITTING (ON)' : 'OFF'}</span>
+            </button>
+
+            {/* Pan Inversion Toggle */}
+            <button
+              type="button"
+              className={`cal-toggle-btn ${invertPan ? 'active' : ''}`}
+              onClick={togglePanInvert}
+              title="Toggle Pan tracking direction (Inverted fixes opposite direction)"
+            >
+              <span className="cal-btn-title">PAN DIRECTION</span>
+              <span className="cal-btn-state">{invertPan ? 'INVERTED (FIX)' : 'NORMAL'}</span>
+            </button>
+
+            {/* Tilt Inversion Toggle */}
+            <button
+              type="button"
+              className={`cal-toggle-btn ${invertTilt ? 'active' : ''}`}
+              onClick={toggleTiltInvert}
+              title="Toggle Tilt tracking direction"
+            >
+              <span className="cal-btn-title">TILT DIRECTION</span>
+              <span className="cal-btn-state">{invertTilt ? 'INVERTED' : 'NORMAL'}</span>
+            </button>
+          </div>
+
+          {/* Quick Home Calibration Button */}
+          <button
+            type="button"
+            className="cal-home-btn"
+            onClick={onHome || onCenter}
+            title="Calibrate servos directly to Neutral Home (90.0°, 90.0°)"
+          >
+            <svg className="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+            <span>CALIBRATE HOME POSITION (90°, 90°)</span>
+          </button>
+
+          {/* TILT MECHANICAL LEVEL TRIM & ZERO-POINT CALIBRATION */}
+          <div className="cal-trim-section">
+            <div className="cal-trim-header">
+              <span className="cal-trim-title">TILT LEVEL TRIM:</span>
+              <span className={`cal-trim-badge ${localTiltOffset !== 0 ? 'active' : ''}`}>
+                {localTiltOffset > 0 ? `+${localTiltOffset.toFixed(1)}°` : `${localTiltOffset.toFixed(1)}°`}
+              </span>
+            </div>
+
+            {/* Quick Trim Micro-Jog Nudge Buttons */}
+            <div className="cal-trim-btn-row">
+              <button
+                type="button"
+                className="cal-trim-btn"
+                onClick={() => handleNudgeTiltOffset(-5.0)}
+                title="Trim down 5°"
+              >
+                -5°
+              </button>
+              <button
+                type="button"
+                className="cal-trim-btn"
+                onClick={() => handleNudgeTiltOffset(-1.0)}
+                title="Trim down 1°"
+              >
+                -1°
+              </button>
+              <button
+                type="button"
+                className="cal-trim-btn"
+                onClick={() => handleNudgeTiltOffset(-0.5)}
+                title="Trim down 0.5°"
+              >
+                -0.5°
+              </button>
+              <button
+                type="button"
+                className="cal-trim-btn reset"
+                onClick={() => handleTiltOffsetCommit(0.0)}
+                title="Reset trim to 0.0°"
+              >
+                0°
+              </button>
+              <button
+                type="button"
+                className="cal-trim-btn"
+                onClick={() => handleNudgeTiltOffset(0.5)}
+                title="Trim up 0.5°"
+              >
+                +0.5°
+              </button>
+              <button
+                type="button"
+                className="cal-trim-btn"
+                onClick={() => handleNudgeTiltOffset(1.0)}
+                title="Trim up 1°"
+              >
+                +1°
+              </button>
+              <button
+                type="button"
+                className="cal-trim-btn"
+                onClick={() => handleNudgeTiltOffset(5.0)}
+                title="Trim up 5°"
+              >
+                +5°
+              </button>
+            </div>
+
+            {/* Tilt Trim Fine Slider */}
+            <input
+              type="range"
+              min="-20.0"
+              max="20.0"
+              step="0.5"
+              value={localTiltOffset}
+              onChange={(e) => setLocalTiltOffset(parseFloat(e.target.value))}
+              onMouseUp={() => handleTiltOffsetCommit()}
+              onTouchEnd={() => handleTiltOffsetCommit()}
+              className="cal-trim-slider"
+            />
+
+            {/* Set Current Position as Level Home (90°) */}
+            {onZeroTilt && (
+              <button
+                type="button"
+                className="cal-zero-level-btn"
+                onClick={onZeroTilt}
+                title="Set current physical tilt angle as 90.0° horizontal level reference"
+              >
+                <svg className="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="22" y1="12" x2="18" y2="12" />
+                  <line x1="6" y1="12" x2="2" y2="12" />
+                  <line x1="12" y1="6" x2="12" y2="2" />
+                  <line x1="12" y1="22" x2="12" y2="18" />
+                </svg>
+                <span>SET CURRENT AS LEVEL (90° REF)</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* DISTANCE & STRUCTURE ADJUSTMENT */}
         <div className="compact-distance-row">
           <div className="dist-slider-header">
             <span className="dist-title">SERVO DISTANCE:</span>
             <span className="dist-badge">{localDistance} mm</span>
             <div className="compact-presets">
-              {[30, 45, 75, 110].map((d) => (
+              {[30, 45, 55, 75, 110].map((d) => (
                 <button
                   key={d}
                   type="button"
-                  className={`pill-btn ${localDistance === d ? 'active' : ''}`}
+                  className={`pill-btn ${d === 55 ? 'preset-badge' : ''} ${localDistance === d ? 'active' : ''}`}
                   onClick={() => handlePreset(d)}
                   disabled={isCalibrating}
+                  title={d === 55 ? "Calibrated Structure Preset (5.5cm)" : `${d}mm`}
                 >
-                  {d}mm
+                  {d}mm{d === 55 ? ' ★' : ''}
                 </button>
               ))}
             </div>
@@ -250,6 +495,41 @@ export default function TurretCard({
             onMouseUp={handleSliderCommit}
             onTouchEnd={handleSliderCommit}
             disabled={isCalibrating}
+          />
+        </div>
+
+        {/* MOTION SMOOTHNESS & DYNAMICS CONTROLS */}
+        <div className="slider-group-compact mt-2">
+          <div className="slider-header">
+            <span className="slider-title">MOTION SMOOTHING (EMA):</span>
+            <span className="slider-val">{localSmooth.toFixed(2)} (LOW = SILKY)</span>
+          </div>
+          <input
+            type="range"
+            min="0.10"
+            max="0.65"
+            step="0.05"
+            value={localSmooth}
+            onChange={(e) => setLocalSmooth(parseFloat(e.target.value))}
+            onMouseUp={handleSmoothCommit}
+            onTouchEnd={handleSmoothCommit}
+          />
+        </div>
+
+        <div className="slider-group-compact mt-1">
+          <div className="slider-header">
+            <span className="slider-title">TRACKING GAIN (Kp):</span>
+            <span className="slider-val">{localKp.toFixed(3)}</span>
+          </div>
+          <input
+            type="range"
+            min="0.02"
+            max="0.14"
+            step="0.005"
+            value={localKp}
+            onChange={(e) => setLocalKp(parseFloat(e.target.value))}
+            onMouseUp={handleKpCommit}
+            onTouchEnd={handleKpCommit}
           />
         </div>
 
@@ -285,12 +565,86 @@ export default function TurretCard({
             </button>
           )}
 
+        {/* REINFORCEMENT ACTIVE VISUAL CENTERING ALIGNMENT */}
+        <div className="rl-centering-card" style={{
+          background: 'rgba(255, 170, 0, 0.05)',
+          border: '1px solid rgba(255, 170, 0, 0.25)',
+          borderRadius: '6px',
+          padding: '10px',
+          margin: '8px 0'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            <span style={{ fontSize: '11px', fontWeight: '700', color: '#ffaa00', letterSpacing: '0.05em' }}>
+              RL TARGET CENTERING ALIGNMENT
+            </span>
+            <span style={{
+              fontSize: '10px',
+              padding: '2px 6px',
+              borderRadius: '3px',
+              background: rlActive ? 'rgba(0, 255, 136, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+              color: rlActive ? '#00ff88' : '#888',
+              border: `1px solid ${rlActive ? '#00ff88' : '#444'}`,
+              fontWeight: '700'
+            }}>
+              {rlActive ? rlStage : 'READY'}
+            </span>
+          </div>
+
+          {rlActive ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#ccc' }}>
+                <span>Alignment: <strong>{rlAlignmentPct}%</strong></span>
+                <span>Reward: <strong>+{rlReward}</strong></span>
+                <span>Err: <strong>{rlDist}px</strong></span>
+              </div>
+              <div style={{ background: '#1a0e14', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
+                <div style={{
+                  width: `${rlAlignmentPct}%`,
+                  height: '100%',
+                  background: rlStage === 'CENTER_LOCKED' ? '#00ff88' : '#ffaa00',
+                  transition: 'width 0.1s ease-out'
+                }} />
+              </div>
+              <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
+                {rlStage === 'CENTER_LOCKED' && onApplyRLCalibration ? (
+                  <button
+                    type="button"
+                    className="btn btn-sm"
+                    style={{ background: '#00ff88', color: '#000', fontWeight: '700', flex: 1 }}
+                    onClick={onApplyRLCalibration}
+                  >
+                    LOCK & ZERO AS HOME REFERENCE
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className="btn btn-abort btn-sm"
+                  style={{ flex: rlStage === 'CENTER_LOCKED' ? '0 0 70px' : '1' }}
+                  onClick={onStopRLAlignment}
+                >
+                  HALT
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              style={{ width: '100%', border: '1px solid #ffaa00', color: '#ffaa00' }}
+              onClick={onStartRLAlignment}
+              title="Drive turret with reinforcement policy gradient until target balloon center aligns perfectly with camera reticle"
+            >
+              🎯 START ACTIVE RL CENTERING ALIGNMENT
+            </button>
+          )}
+        </div>
+
           {/* D-Pad Manual Jog */}
           <div className="compact-dpad-wrap">
             <button
               type="button"
               className="dpad-btn-sm"
-              onClick={() => onNudge(0, 5)}
+              onClick={() => onNudge(0, invertTilt ? 5 : -5)}
               disabled={isCalibrating}
               title="Tilt Up"
             >
@@ -302,7 +656,7 @@ export default function TurretCard({
               <button
                 type="button"
                 className="dpad-btn-sm"
-                onClick={() => onNudge(-5, 0)}
+                onClick={() => onNudge(invertPan ? 5 : -5, 0)}
                 disabled={isCalibrating}
                 title="Pan Left"
               >
@@ -323,7 +677,7 @@ export default function TurretCard({
               <button
                 type="button"
                 className="dpad-btn-sm"
-                onClick={() => onNudge(5, 0)}
+                onClick={() => onNudge(invertPan ? -5 : 5, 0)}
                 disabled={isCalibrating}
                 title="Pan Right"
               >
@@ -335,7 +689,7 @@ export default function TurretCard({
             <button
               type="button"
               className="dpad-btn-sm"
-              onClick={() => onNudge(0, -5)}
+              onClick={() => onNudge(0, invertTilt ? -5 : 5)}
               disabled={isCalibrating}
               title="Tilt Down"
             >

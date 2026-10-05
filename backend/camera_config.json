@@ -1,5 +1,5 @@
 {
-  "ip": "webcam",
-  "port": 0,
-  "stream_url": "0"
+  "stream_url": "COM15",
+  "flip_v": true,
+  "flip_h": false
 }

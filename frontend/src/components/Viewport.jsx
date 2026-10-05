@@ -3,9 +3,14 @@ import React, { useRef } from 'react';
 export default function Viewport({
   telemetry,
   streamSrc,
+  onReloadStream,
   onSnapshot,
   onToggleEnhance,
   onToggleLaser,
+  onToggleManualLaser,
+  onToggleTracking,
+  onToggleInvertPan,
+  onToggleFlipV,
 }) {
   const videoBoxRef = useRef(null);
 
@@ -25,10 +30,22 @@ export default function Viewport({
   const isArmed = !!telemetry?.laser_armed;
   const isFiring = !!telemetry?.laser_firing;
   const isCalibrating = !!telemetry?.is_calibrating;
+  const isTracking = telemetry?.tracking_enabled !== false;
+  const isManualLaser = !!telemetry?.manual_laser;
+  const isInvertPan = telemetry?.invert_pan !== false;
+  const isFlipV = telemetry?.flip_v !== false;
+  const panAngle = telemetry?.pan !== undefined ? Number(telemetry.pan).toFixed(1) : '90.0';
+  const tiltAngle = telemetry?.tilt !== undefined ? Number(telemetry.tilt).toFixed(1) : '90.0';
 
   let lockClass = 'searching';
   let lockText = 'SEARCHING AIRSPACE...';
-  if (isCalibrating) {
+  if (telemetry?.rl_active) {
+    lockClass = telemetry?.rl_stage === 'CENTER_LOCKED' ? 'locked' : 'acquiring';
+    lockText = `🎯 RL CENTERING: ${telemetry?.rl_stage || 'ALIGNING'} | ALIGN: ${telemetry?.rl_alignment_pct || 0}% | R: +${telemetry?.rl_reward || 0} | ERR: ${telemetry?.rl_dist_px || 0}px`;
+  } else if (!isTracking) {
+    lockClass = 'frozen';
+    lockText = `TARGET FROZEN / LOCK HOLD [${panAngle}°, ${tiltAngle}°]`;
+  } else if (isCalibrating) {
     lockClass = 'acquiring';
     lockText = `KINEMATIC CALIBRATION IN PROGRESS: ${telemetry?.calibration_stage || ''}`;
   } else if (isLocked) {
@@ -41,13 +58,18 @@ export default function Viewport({
 
   return (
     <section className="viewport-section">
-      <div className="video-container" ref={videoBoxRef} id="video-frame-box">
+      <div className="video-container" ref={videoBoxRef} id="video-frame-box" onClick={onReloadStream} title="Click to refresh live camera stream">
         {/* Live Camera MJPEG Stream */}
         <img
           id="video-stream"
           className="stream-media"
           src={streamSrc}
           alt="Agesis EYE Live Tracking Feed"
+          onError={() => {
+            if (onReloadStream) {
+              setTimeout(onReloadStream, 800);
+            }
+          }}
         />
 
         {/* Tactical Corner Brackets */}
@@ -120,6 +142,76 @@ export default function Viewport({
               {isEnhance ? 'ON' : 'OFF'}
             </span>
           </button>
+
+          {/* Target Tracking Lock / Freeze Button */}
+          {onToggleTracking && (
+            <button
+              className={`btn btn-toggle ${!isTracking ? 'btn-frozen' : ''}`}
+              onClick={onToggleTracking}
+              title={isTracking ? "Lock & Freeze Turret at current position for physical sighting" : "Resume autonomous closed-loop tracking"}
+            >
+              <svg className="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+              <span>{isTracking ? 'LOCK TARGET' : 'TARGET LOCKED'}</span>
+              <span className={`toggle-pill ${isTracking ? '' : 'warn'}`}>
+                {isTracking ? 'FREEZE' : 'HOLD'}
+              </span>
+            </button>
+          )}
+
+          {/* Sighting Laser ON/OFF button */}
+          {onToggleManualLaser && (
+            <button
+              className={`btn btn-toggle ${isManualLaser ? 'laser-manual-on' : ''}`}
+              onClick={onToggleManualLaser}
+              title="Force red laser ON continuously for optical sighting and physical calibration"
+            >
+              <svg className="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="6" />
+                <line x1="12" y1="2" x2="12" y2="4" />
+                <line x1="12" y1="20" x2="12" y2="22" />
+                <line x1="2" y1="12" x2="4" y2="12" />
+                <line x1="20" y1="12" x2="22" y2="12" />
+              </svg>
+              <span>SIGHTING LASER</span>
+              <span className={`toggle-pill ${isManualLaser ? 'active-red' : ''}`}>
+                {isManualLaser ? 'EMITTING' : 'OFF'}
+              </span>
+            </button>
+          )}
+
+          {/* Direction Invert Pan Shortcut */}
+          {onToggleInvertPan && (
+            <button
+              className="btn btn-secondary"
+              onClick={onToggleInvertPan}
+              title="Toggle Pan tracking direction inversion"
+            >
+              <svg className="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M7 16V4M7 4L3 8M7 4L11 8M17 8V20M17 20L21 16M17 20L13 16" />
+              </svg>
+              <span>PAN: {isInvertPan ? 'INV' : 'NORM'}</span>
+            </button>
+          )}
+
+          {/* Camera Feed Vertical Inversion (Upside-Down) Toggle */}
+          {onToggleFlipV && (
+            <button
+              className={`btn btn-toggle ${isFlipV ? 'active' : ''}`}
+              onClick={onToggleFlipV}
+              title="Flip camera feed vertically upside-down (corrects inverted ESP32-CAM lens mounting)"
+            >
+              <svg className="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 3v18M17 8l-5-5-5 5M17 16l-5 5-5-5" />
+              </svg>
+              <span>FLIP V</span>
+              <span className={`toggle-pill ${isFlipV ? 'active' : ''}`}>
+                {isFlipV ? 'FLIPPED' : 'NORMAL'}
+              </span>
+            </button>
+          )}
         </div>
 
         <div className="toolbar-right">

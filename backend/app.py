@@ -11,7 +11,7 @@ import threading
 import asyncio
 import cv2
 import numpy as np
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, Response
 from fastapi.responses import StreamingResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -39,21 +39,30 @@ model_candidates = [
 MODEL_PATH = next((p for p in model_candidates if os.path.exists(p)), model_candidates[0])
 
 # Load camera config
-default_stream_url = "http://10.96.117.1:81/stream"
+default_stream_url = "COM15"
+flip_v = True
+flip_h = False
 if os.path.exists(CONFIG_PATH):
     try:
         with open(CONFIG_PATH) as f:
             cfg = json.load(f)
             default_stream_url = cfg.get("stream_url", default_stream_url)
+            flip_v = cfg.get("flip_v", True)
+            flip_h = cfg.get("flip_h", False)
     except Exception:
         pass
 
 # Initialize Components
 stream_reader = ZeroLagStreamReader(default_stream_url)
-tracker = BalloonTracker(MODEL_PATH, imgsz=384, conf=0.35, enhance=False)
-turret = TurretController(esp32_ip=None)
+tracker = BalloonTracker(MODEL_PATH, imgsz=384, conf=0.22, enhance=True)
+is_serial_stream = stream_reader.is_serial
+turret = TurretController(esp32_ip=None, use_shared_serial=is_serial_stream)
 if str(default_stream_url).startswith("http"):
     turret.set_esp32_endpoint(default_stream_url)
+elif stream_reader.is_serial:
+    turret.use_shared_serial = True
+    turret.stream_writer = stream_reader.write_serial
+    turret.is_simulated = False
 
 app = FastAPI(title="Agesis EYE Autonomous Turret")
 
@@ -75,9 +84,11 @@ latest_telemetry = {
     "target_pos": "NONE",
     "latency_ms": 0.0,
     "enhance": False,
-    "conf_threshold": 0.35,
+    "conf_threshold": 0.22,
     "cam_fps": 0.0,
     "connected": False,
+    "flip_v": flip_v,
+    "flip_h": flip_h,
     **turret.get_state()
 }
 
@@ -124,15 +135,40 @@ def tracking_pipeline_worker():
 
         last_processed_fid = fid
 
+        # Apply camera feed flip (V-Flip upside down for inverted ESP32-CAM lens mounting)
+        if flip_v and flip_h:
+            frame = cv2.flip(frame, -1)
+        elif flip_v:
+            frame = cv2.flip(frame, 0)
+        elif flip_h:
+            frame = cv2.flip(frame, 1)
+
         annotated, tele = tracker.process_frame(frame)
-        turret.update_aiming(tele["dx"], tele["dy"], tele["locked"])
+
+        if getattr(turret, 'rl_active', False):
+            turret.update_rl_alignment(tele["dx"], tele["dy"], tele["locked"])
+            # Draw Reinforcement Alignment Overlay on annotated video
+            h_f, w_f = annotated.shape[:2]
+            cx, cy = w_f // 2, h_f // 2
+            rl_st = turret.get_state()
+            if tele["locked"]:
+                tx = int(cx + tele["dx"])
+                ty = int(cy + tele["dy"])
+                cv2.line(annotated, (cx, cy), (tx, ty), (0, 255, 255), 2)
+                cv2.circle(annotated, (tx, ty), 6, (0, 255, 255), -1)
+            badge_text = f"RL ALIGN: {rl_st['rl_alignment_pct']}% | R: {rl_st['rl_reward']} | {rl_st['rl_stage']}"
+            cv2.putText(annotated, badge_text, (15, h_f - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (0, 255, 255), 1, cv2.LINE_AA)
+        else:
+            turret.update_aiming(tele["dx"], tele["dy"], tele["locked"])
 
         turret_state = turret.get_state()
         latest_telemetry = {
             **tele,
             **turret_state,
             "cam_fps": round(stream_reader.fps, 1),
-            "connected": stream_reader.connected
+            "connected": stream_reader.connected,
+            "flip_v": flip_v,
+            "flip_h": flip_h
         }
 
         ret, jpeg = cv2.imencode(".jpg", annotated, encode_param)
@@ -147,8 +183,8 @@ _tracking_thread = threading.Thread(target=tracking_pipeline_worker, daemon=True
 _tracking_thread.start()
 
 
-def mjpeg_generator():
-    """Zero-lag MJPEG stream generator. Yields only freshest frame, instantly dropping buffer backlog."""
+async def mjpeg_generator():
+    """Zero-lag asynchronous MJPEG stream generator for HTML <img>."""
     global latest_jpeg_bytes, latest_frame_id
     last_sent_id = -1
 
@@ -159,17 +195,51 @@ def mjpeg_generator():
 
         if curr_bytes is not None and curr_id != last_sent_id:
             last_sent_id = curr_id
-            yield (b"--frame\r\n"
-                   b"Content-Type: image/jpeg\r\n\r\n" + curr_bytes + b"\r\n")
-            time.sleep(0.008)
+            frame_len = len(curr_bytes)
+            yield (
+                b"--frame\r\n"
+                b"Content-Type: image/jpeg\r\n"
+                b"Content-Length: " + str(frame_len).encode("ascii") + b"\r\n\r\n"
+                + curr_bytes + b"\r\n"
+            )
+            await asyncio.sleep(0.015)
         else:
-            time.sleep(0.012)
+            await asyncio.sleep(0.02)
 
 
 @app.get("/api/stream")
-def video_stream():
+async def video_stream():
     """MJPEG stream endpoint for live video playback in HTML <img>."""
-    return StreamingResponse(mjpeg_generator(), media_type="multipart/x-mixed-replace; boundary=frame")
+    headers = {
+        "Cache-Control": "no-cache, no-store, must-revalidate, pre-check=0, post-check=0, max-age=0",
+        "Pragma": "no-cache",
+        "Expires": "0",
+        "Access-Control-Allow-Origin": "*",
+    }
+    return StreamingResponse(
+        mjpeg_generator(),
+        media_type="multipart/x-mixed-replace; boundary=frame",
+        headers=headers
+    )
+
+
+@app.get("/api/frame/latest")
+def get_latest_frame():
+    """Ultra-low latency single-frame snapshot endpoint for canvas/image fallback."""
+    with frame_lock:
+        curr_bytes = latest_jpeg_bytes
+    if curr_bytes is None:
+        return Response(status_code=503, content="No frame ready")
+    return Response(
+        content=curr_bytes,
+        media_type="image/jpeg",
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0",
+            "Access-Control-Allow-Origin": "*",
+        }
+    )
 
 
 @app.get("/api/telemetry")
@@ -183,30 +253,49 @@ class ConfigModel(BaseModel):
     enhance: bool = None
     source: str = None
     laser_armed: bool = None
+    flip_v: bool = None
+    flip_h: bool = None
 
 
 @app.post("/api/config")
 def update_config(cfg: ConfigModel):
     """Update runtime tracking parameters."""
-    global stream_reader
+    global stream_reader, flip_v, flip_h
     if cfg.conf is not None:
         tracker.conf = max(0.10, min(0.95, float(cfg.conf)))
     if cfg.enhance is not None:
         tracker.enhance = bool(cfg.enhance)
     if cfg.laser_armed is not None:
         turret.set_armed(bool(cfg.laser_armed))
+    if cfg.flip_v is not None:
+        flip_v = bool(cfg.flip_v)
+    if cfg.flip_h is not None:
+        flip_h = bool(cfg.flip_h)
     if cfg.source is not None and cfg.source != stream_reader.source:
         stream_reader.release()
         stream_reader = ZeroLagStreamReader(cfg.source)
         if str(cfg.source).startswith("http"):
             turret.set_esp32_endpoint(cfg.source)
+            turret.use_shared_serial = False
+            turret.stream_writer = None
+        elif stream_reader.is_serial:
+            turret.set_esp32_endpoint(None)
+            turret.use_shared_serial = True
+            turret.stream_writer = stream_reader.write_serial
+            turret.is_simulated = False
         else:
             turret.set_esp32_endpoint(None)
-        try:
-            with open(CONFIG_PATH, "w") as f:
-                json.dump({"stream_url": cfg.source}, f, indent=2)
-        except Exception:
-            pass
+            turret.use_shared_serial = False
+            turret.stream_writer = None
+    try:
+        with open(CONFIG_PATH, "w") as f:
+            json.dump({
+                "stream_url": stream_reader.source,
+                "flip_v": flip_v,
+                "flip_h": flip_h
+            }, f, indent=2)
+    except Exception:
+        pass
     return {"status": "ok", "telemetry": latest_telemetry}
 
 
@@ -214,11 +303,72 @@ class DistanceModel(BaseModel):
     distance_mm: float
 
 
+class StructureModel(BaseModel):
+    servo_distance_mm: float = None
+    base_height_mm: float = None
+    pan_offset: float = None
+    tilt_offset: float = None
+    invert_pan: bool = None
+    invert_tilt: bool = None
+    kp: float = None
+    smooth_factor: float = None
+    tracking_enabled: bool = None
+
+
 @app.post("/api/turret/distance")
 def set_servo_distance(d: DistanceModel):
     """Adjust physical distance between the 2 servos and auto-recalibrate kinematics."""
     state = turret.set_servo_distance(d.distance_mm)
     return state
+
+
+@app.post("/api/turret/structure")
+def set_turret_structure(s: StructureModel):
+    """Calibrate physical structure dimensions, direction inversions, and servo home trims."""
+    state = turret.set_structure(
+        servo_distance_mm=s.servo_distance_mm,
+        base_height_mm=s.base_height_mm,
+        pan_offset=s.pan_offset,
+        tilt_offset=s.tilt_offset,
+        invert_pan=s.invert_pan,
+        invert_tilt=s.invert_tilt,
+        kp=s.kp,
+        smooth_factor=s.smooth_factor,
+        tracking_enabled=s.tracking_enabled
+    )
+    return state
+
+
+class ManualLaserModel(BaseModel):
+    manual_laser: bool
+
+
+@app.post("/api/turret/laser/manual")
+def set_manual_laser(m: ManualLaserModel):
+    """Force manual sighting laser ON or OFF for physical sighting alignment calibration."""
+    return turret.set_manual_laser(m.manual_laser)
+
+
+class TrackingToggleModel(BaseModel):
+    tracking_enabled: bool
+
+
+@app.post("/api/turret/tracking/toggle")
+def toggle_turret_tracking(t: TrackingToggleModel):
+    """Lock/freeze target tracking to hold turret still during calibration."""
+    return turret.set_tracking_enabled(t.tracking_enabled)
+
+
+@app.post("/api/turret/home")
+def home_turret():
+    """Calibrate servos directly to physical home/neutral center position (90, 90)."""
+    return turret.center()
+
+
+@app.post("/api/turret/calibrate/zero_tilt")
+def zero_tilt_level():
+    """Calibrate current physical tilt position as the 90.0 deg horizontal level reference."""
+    return turret.zero_tilt_level()
 
 
 @app.post("/api/turret/calibrate/start")
@@ -233,6 +383,27 @@ def stop_turret_calibration():
     """Halt active calibration sequence and center servos."""
     state = turret.stop_auto_calibration()
     return {"status": "stopped", "turret": state}
+
+
+@app.post("/api/turret/alignment/start")
+def start_rl_alignment():
+    """Initiate active visual reinforcement alignment until target balloon is centered."""
+    state = turret.start_rl_alignment()
+    return {"status": "started", "turret": state}
+
+
+@app.post("/api/turret/alignment/stop")
+def stop_rl_alignment():
+    """Stop active visual reinforcement alignment."""
+    state = turret.stop_rl_alignment()
+    return {"status": "stopped", "turret": state}
+
+
+@app.post("/api/turret/alignment/calibrate")
+def apply_rl_calibrated_home():
+    """Save current target-centered position as calibrated reference home."""
+    state = turret.apply_rl_calibrated_home()
+    return {"status": "calibrated", "turret": state}
 
 
 class NudgeModel(BaseModel):
@@ -254,9 +425,10 @@ def center_turret():
 
 @app.post("/api/snapshot")
 def take_snapshot():
-    frame = stream_reader.get_latest()
-    if frame is None:
+    res = stream_reader.get_latest()
+    if res is None or res[0] is None:
         return JSONResponse({"status": "error", "message": "No active video frame"}, status_code=400)
+    frame, _ = res
     annotated, _ = tracker.process_frame(frame)
     fname = f"snap_{int(time.time()*1000)}.jpg"
     fpath = os.path.join(SNAPSHOT_DIR, fname)
@@ -269,8 +441,16 @@ def discover_camera():
     discovered = auto_discover_esp32_ip()
     if discovered:
         turret.set_esp32_endpoint(discovered)
-        return {"status": "found", "url": discovered}
-    return {"status": "not_found", "message": "Could not locate ESP32 on local subnet"}
+        return {"status": "found", "url": discovered, "mode": "network"}
+    try:
+        import serial.tools.list_ports
+        for p in serial.tools.list_ports.comports():
+            desc = p.description.lower()
+            if any(k in desc for k in ["cp210", "ch340", "ftdi", "uart", "usb-serial", "serial", "esp"]):
+                return {"status": "found", "url": p.device, "mode": "usb"}
+    except Exception:
+        pass
+    return {"status": "not_found", "message": "Could not locate ESP32 on local network or USB"}
 
 
 @app.websocket("/ws/telemetry")

@@ -30,12 +30,55 @@ except ImportError:
     HAS_YOLO = False
 
 
-def auto_discover_esp32_ip(subnet_prefix="10.96.117"):
-    """Quickly probe the subnet on port 81 to discover ESP32 camera IP."""
-    def check_ip(i):
-        ip = f"{subnet_prefix}.{i}"
+def auto_discover_esp32_ip(subnet_prefix=None):
+    """Dynamically probe USB Serial ports and local network subnets on port 81."""
+    # 0. Check USB serial ports first (Direct ESP32-CAM USB connector)
+    try:
+        import serial.tools.list_ports
+        ports = [p.device for p in serial.tools.list_ports.comports() if "bluetooth" not in p.description.lower()]
+        if ports:
+            if "COM15" in ports:
+                return "COM15"
+            return ports[0]
+    except Exception:
+        pass
+
+    subnets = []
+    if subnet_prefix:
+        subnets.append(subnet_prefix)
+
+    # 1. Check default ESP32 SoftAP IP
+    try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.settimeout(0.15)
+        s.settimeout(0.3)
+        if s.connect_ex(("192.168.4.1", 81)) == 0:
+            s.close()
+            return "http://192.168.4.1:81/stream"
+        s.close()
+    except Exception:
+        pass
+
+    # 2. Extract host interface subnets
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        host_ip = s.getsockname()[0]
+        s.close()
+        parts = host_ip.split(".")
+        if len(parts) == 4:
+            sub = f"{parts[0]}.{parts[1]}.{parts[2]}"
+            if sub not in subnets:
+                subnets.append(sub)
+    except Exception:
+        pass
+
+    for fallback in ["192.168.1", "192.168.0", "10.96.117"]:
+        if fallback not in subnets:
+            subnets.append(fallback)
+
+    def check_ip(ip):
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(0.12)
         try:
             if s.connect_ex((ip, 81)) == 0:
                 return ip
@@ -45,25 +88,35 @@ def auto_discover_esp32_ip(subnet_prefix="10.96.117"):
             s.close()
         return None
 
-    with ThreadPoolExecutor(max_workers=50) as ex:
-        results = [r for r in ex.map(check_ip, range(1, 255)) if r]
-        
-    if results:
-        return f"http://{results[0]}:81/stream"
+    for sub in subnets:
+        with ThreadPoolExecutor(max_workers=50) as ex:
+            ips = [f"{sub}.{i}" for i in range(1, 255)]
+            results = [r for r in ex.map(check_ip, ips) if r]
+            if results:
+                return f"http://{results[0]}:81/stream"
     return None
 
 
 class ZeroLagStreamReader:
-    """Consistent, zero-latency stream reader that drains MJPEG buffers continuously."""
+    """
+    Consistent, zero-latency stream reader that drains frames continuously.
+    Supports:
+    1. HTTP MJPEG stream (e.g., 'http://192.168.4.1:81/stream')
+    2. USB Serial Direct Stream ('usb', 'serial', 'COMx')
+    3. DirectShow / V4L2 webcam index (0, 1, 2)
+    """
     def __init__(self, source):
-        self.source = source
+        self.source = str(source) if source is not None else "0"
         self.latest_frame = None
         self.frame_id = 0
         self.lock = threading.Lock()
         self.running = True
         self.connected = False
         self.fps = 0.0
-        self.is_url = isinstance(source, str) and source.startswith("http")
+        
+        src_lower = self.source.lower().strip()
+        self.is_url = src_lower.startswith("http")
+        self.is_serial = src_lower in ("usb", "serial", "auto") or src_lower.startswith("com")
         self._thread = None
         self.start()
 
@@ -71,9 +124,151 @@ class ZeroLagStreamReader:
         self.running = True
         if self.is_url:
             self._thread = threading.Thread(target=self._requests_mjpeg_worker, daemon=True)
+        elif self.is_serial:
+            self._thread = threading.Thread(target=self._serial_worker, daemon=True)
         else:
             self._thread = threading.Thread(target=self._cv2_worker, daemon=True)
         self._thread.start()
+
+    def _serial_worker(self):
+        """Read JPEG frames directly from ESP32-CAM over USB Serial UART."""
+        try:
+            import serial
+            import serial.tools.list_ports
+        except ImportError:
+            print("[STREAM] pyserial not available for USB video streaming.")
+            return
+
+        port = self.source
+        if port.lower() in ("usb", "serial", "auto"):
+            ports = [p for p in serial.tools.list_ports.comports() if "bluetooth" not in p.description.lower()]
+            if ports:
+                port = ports[0].device
+            else:
+                port = "COM15"
+
+        print(f"[STREAM] Connecting to ESP32-CAM USB Serial on {port}...")
+        while self.running:
+            ser = None
+            try:
+                ser = serial.Serial()
+                ser.port = port
+                ser.baudrate = 115200
+                ser.timeout = 0.2
+                ser.open()
+                try:
+                    ser.dtr = False
+                    ser.rts = False
+                except Exception:
+                    pass
+                self.ser_conn = ser
+
+                self.connected = True
+                print(f"[STREAM] Connected to {port} for USB camera stream.")
+                time.sleep(0.2)
+                # Request ESP32 to activate serial video streaming
+                ser.write(b"STREAM_ON\n")
+                ser.flush()
+                
+                bytes_buf = b""
+                fc, t0 = 0, time.time()
+                last_ping_time = time.time()
+
+                while self.running:
+                    now = time.time()
+                    # Re-send STREAM_ON every 1.5s if no frames have arrived
+                    if now - last_ping_time > 1.5:
+                        try:
+                            ser.write(b"STREAM_ON\n")
+                            ser.flush()
+                        except Exception:
+                            pass
+                        last_ping_time = now
+
+                    waiting = ser.in_waiting
+                    if not waiting:
+                        time.sleep(0.004)
+                        continue
+                    chunk = ser.read(waiting)
+                    if not chunk:
+                        continue
+                    if len(bytes_buf) == 0:
+                        print(f"[SERIAL] Received first {len(chunk)} bytes from ESP32: {chunk[:40]}")
+                    bytes_buf += chunk
+                    
+                    # Zero-Lag Drain: scan forward to find the LATEST complete frame and skip stale backlog
+                    last_valid_start = -1
+                    last_valid_len = 0
+                    search_pos = 0
+
+                    while True:
+                        idx = bytes_buf.find(b"--FRAME:", search_pos)
+                        if idx == -1:
+                            break
+                        end_hdr = bytes_buf.find(b"\n", idx)
+                        if end_hdr != -1:
+                            hdr = bytes_buf[idx:end_hdr].decode("ascii", errors="ignore")
+                            try:
+                                flen = int(hdr.split(":")[1].strip())
+                                if len(bytes_buf) >= end_hdr + 1 + flen:
+                                    last_valid_start = end_hdr + 1
+                                    last_valid_len = flen
+                                    search_pos = end_hdr + 1 + flen
+                                    continue
+                            except Exception:
+                                pass
+                        search_pos = idx + 8
+
+                    if last_valid_start != -1:
+                        # Decode only the newest complete frame and discard older backlog
+                        img_data = bytes_buf[last_valid_start : last_valid_start + last_valid_len]
+                        bytes_buf = bytes_buf[last_valid_start + last_valid_len:]
+                        frame = cv2.imdecode(np.frombuffer(img_data, dtype=np.uint8), cv2.IMREAD_COLOR)
+                        if frame is not None:
+                            if self.frame_id == 0:
+                                print(f"[STREAM] First frame successfully decoded! ({frame.shape[1]}x{frame.shape[0]})")
+                            with self.lock:
+                                self.latest_frame = frame
+                                self.frame_id += 1
+                                self.connected = True
+                            fc += 1
+                            last_ping_time = now
+                            if now - t0 >= 1.0:
+                                self.fps = fc / (now - t0)
+                                fc, t0 = 0, now
+                        continue
+
+                    # Fallback: Raw JPEG SOI/EOI delimiters
+                    a = bytes_buf.rfind(b"\xff\xd8")  # Find most recent JPEG start
+                    if a != -1:
+                        b = bytes_buf.find(b"\xff\xd9", a)  # Find matching JPEG end
+                        if b != -1 and b > a:
+                            jpg = bytes_buf[a:b+2]
+                            bytes_buf = bytes_buf[b+2:]
+                            frame = cv2.imdecode(np.frombuffer(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
+                            if frame is not None:
+                                with self.lock:
+                                    self.latest_frame = frame
+                                    self.frame_id += 1
+                                    self.connected = True
+                                fc += 1
+                                now = time.time()
+                                if now - t0 >= 1.0:
+                                    self.fps = fc / (now - t0)
+                                    fc, t0 = 0, now
+                    elif len(bytes_buf) > 65536:
+                        bytes_buf = bytes_buf[-8192:]
+            except Exception as e:
+                print(f"[STREAM EXCEPTION] {e}")
+                self.connected = False
+                time.sleep(1.0)
+            finally:
+                if ser:
+                    try:
+                        ser.close()
+                    except Exception:
+                        pass
+                self.ser_conn = None
 
     def _cv2_worker(self):
         src = int(self.source) if str(self.source).isdigit() else self.source
@@ -150,13 +345,29 @@ class ZeroLagStreamReader:
                 return self.latest_frame, self.frame_id
             return None, 0
 
+    def write_serial(self, data: bytes):
+        """Write serial data over the active USB connection."""
+        if getattr(self, "ser_conn", None) and getattr(self.ser_conn, "is_open", False):
+            try:
+                self.ser_conn.write(data)
+                return True
+            except Exception:
+                pass
+        return False
+
     def release(self):
         self.running = False
+        if getattr(self, "ser_conn", None):
+            try:
+                self.ser_conn.close()
+            except Exception:
+                pass
+            self.ser_conn = None
 
 
 class BalloonTracker:
     """YOLO detection and tracking engine with adaptive peripheral FOV thresholding."""
-    def __init__(self, model_path, imgsz=384, conf=0.35, iou=0.45, lock_threshold=3, enhance=False):
+    def __init__(self, model_path, imgsz=384, conf=0.22, iou=0.45, lock_threshold=2, enhance=True):
         self.model_path = model_path
         self.imgsz = imgsz
         self.conf = conf
@@ -195,7 +406,11 @@ class BalloonTracker:
         self.clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
 
     def apply_ep_clahe(self, img_bgr):
-        """Edge-Preserving CLAHE transform for robust low-contrast balloon detection."""
+        """Edge-Preserving CLAHE transform and auto-exposure for robust low-contrast balloon detection."""
+        mean_v = np.mean(img_bgr)
+        if mean_v < 70:
+            scale = min(2.5, 100.0 / max(mean_v, 8.0))
+            img_bgr = cv2.convertScaleAbs(img_bgr, alpha=scale, beta=10)
         lab = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2LAB)
         l, a, b = cv2.split(lab)
         l_clahe = self.clahe.apply(l)
@@ -234,7 +449,7 @@ class BalloonTracker:
 
             # Peripheral edge adaptive confidence threshold
             xc_norm = cx_p / self.imgsz
-            adaptive_thresh = np.where((xc_norm < 0.18) | (xc_norm > 0.82), max(0.18, self.conf - 0.15), self.conf)
+            adaptive_thresh = np.where((xc_norm < 0.15) | (xc_norm > 0.85), max(0.14, self.conf - 0.08), self.conf)
             mask = confs >= adaptive_thresh
 
             if np.any(mask):
@@ -252,9 +467,9 @@ class BalloonTracker:
                 x2s = ((valid_cx + valid_w / 2) * sx).astype(int)
                 y2s = ((valid_cy + valid_h / 2) * sy).astype(int)
 
-                # Aspect ratio filter for realistic balloon geometry
+                # Flexible aspect ratio filter: supports round, oval, and oblong balloons
                 ars = valid_w / np.maximum(valid_h, 1e-4)
-                ar_mask = (ars >= 0.50) & (ars <= 1.80)
+                ar_mask = (ars >= 0.25) & (ars <= 3.50)
 
                 nms_boxes = []
                 nms_confs = []
@@ -268,7 +483,7 @@ class BalloonTracker:
                         nms_confs.append(float(c))
 
                 if nms_boxes:
-                    indices = cv2.dnn.NMSBoxes(nms_boxes, nms_confs, score_threshold=0.15, nms_threshold=self.iou)
+                    indices = cv2.dnn.NMSBoxes(nms_boxes, nms_confs, score_threshold=0.14, nms_threshold=self.iou)
                     if len(indices) > 0:
                         for idx in indices.flatten():
                             bx, by, bw, bh = nms_boxes[idx]

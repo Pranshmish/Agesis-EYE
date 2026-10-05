@@ -83,6 +83,44 @@ export default function ControlsCard({
               <span>{isDiscovering ? 'SCANNING...' : 'AUTO-FIND'}</span>
             </button>
           </div>
+
+          {/* Quick Camera Source Selectors */}
+          <div className="source-presets-row" style={{ display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className={`pill-btn ${(sourceInput.toLowerCase() === 'usb' || sourceInput.toUpperCase().startsWith('COM')) ? 'active' : ''}`}
+              onClick={() => {
+                setSourceInput('COM15');
+                onSaveSource('COM15');
+              }}
+              title="Direct ESP32-CAM USB Serial streaming on COM15 (No WiFi needed)"
+            >
+              ESP-CAM USB
+            </button>
+            <button
+              type="button"
+              className={`pill-btn ${sourceInput.includes('192.168.4.1') ? 'active' : ''}`}
+              onClick={() => {
+                const url = 'http://192.168.4.1:81/stream';
+                setSourceInput(url);
+                onSaveSource(url);
+              }}
+              title="ESP32-CAM Direct SoftAP (Connect PC WiFi to ESP32-CAM-TURRET)"
+            >
+              ESP-CAM AP
+            </button>
+            <button
+              type="button"
+              className={`pill-btn ${sourceInput === '0' ? 'active' : ''}`}
+              onClick={() => {
+                setSourceInput('0');
+                onSaveSource('0');
+              }}
+              title="Local PC Webcam Fallback"
+            >
+              WEBCAM
+            </button>
+          </div>
         </form>
       </div>
     </div>

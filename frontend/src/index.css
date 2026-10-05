@@ -1571,3 +1571,262 @@ input[type="text"]:focus {
   transform: translateY(0);
   opacity: 1;
 }
+
+/* --- CALIBRATION & SIGHTING EXTENSIONS --- */
+.lock-banner.frozen {
+  background: rgba(255, 170, 0, 0.18);
+  border-color: #ffaa00;
+  color: #ffaa00;
+  box-shadow: 0 0 15px rgba(255, 170, 0, 0.35);
+}
+
+.btn-frozen {
+  border-color: #ffaa00 !important;
+  color: #ffaa00 !important;
+  background: rgba(255, 170, 0, 0.12) !important;
+}
+
+.toggle-pill.warn {
+  background: #ffaa00;
+  color: #0b0508;
+  font-weight: 700;
+}
+
+.laser-manual-on {
+  border-color: var(--blood-red) !important;
+  background: rgba(255, 15, 60, 0.28) !important;
+  box-shadow: 0 0 16px var(--blood-glow) !important;
+  animation: laser-pulse-glow 1.2s infinite alternate ease-in-out;
+}
+
+@keyframes laser-pulse-glow {
+  from { box-shadow: 0 0 8px var(--blood-glow); }
+  to { box-shadow: 0 0 22px rgba(255, 15, 60, 0.85); }
+}
+
+.toggle-pill.active-red {
+  background: var(--blood-red);
+  color: #ffffff;
+  font-weight: 800;
+  box-shadow: 0 0 8px var(--blood-glow);
+}
+
+.calibration-deck {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px;
+  background: rgba(14, 6, 11, 0.75);
+  border: 1px solid rgba(255, 15, 60, 0.2);
+  border-radius: var(--radius-sm);
+}
+
+.cal-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 15, 60, 0.15);
+  padding-bottom: 5px;
+}
+
+.cal-title {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--blood-red);
+  letter-spacing: 1px;
+}
+
+.cal-status-tag {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  color: var(--text-muted);
+  background: rgba(255, 15, 60, 0.08);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.cal-grid-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.cal-toggle-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: rgba(20, 8, 14, 0.8);
+  border: 1px solid rgba(255, 15, 60, 0.25);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  transition: all 0.2s ease;
+}
+
+.cal-toggle-btn:hover {
+  border-color: var(--blood-red);
+  color: var(--text-main);
+  background: rgba(255, 15, 60, 0.12);
+}
+
+.cal-toggle-btn.active {
+  border-color: var(--blood-red);
+  background: rgba(255, 15, 60, 0.2);
+  color: #fff;
+  box-shadow: 0 0 10px rgba(255, 15, 60, 0.25);
+}
+
+.cal-btn-title {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+}
+
+.cal-btn-state {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: var(--blood-red);
+}
+
+.cal-toggle-btn.active .cal-btn-state {
+  color: #ff4d6d;
+}
+
+.cal-home-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(255, 170, 51, 0.12);
+  border: 1px solid rgba(255, 170, 51, 0.4);
+  color: #ffaa33;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cal-home-btn:hover {
+  background: rgba(255, 170, 51, 0.25);
+  box-shadow: 0 0 12px rgba(255, 170, 51, 0.3);
+}
+
+.pill-btn.preset-badge {
+  border-color: #ffaa33 !important;
+  color: #ffaa33 !important;
+}
+
+.pill-btn.preset-badge.active {
+  background: #ffaa33 !important;
+  color: #12080e !important;
+  font-weight: 800 !important;
+}
+
+/* Tilt Mechanical Trim & Zero-Point Calibration */
+.cal-trim-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(20, 8, 14, 0.7);
+  border: 1px solid rgba(255, 170, 51, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+  margin-top: 4px;
+}
+
+.cal-trim-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cal-trim-title {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #ffaa33;
+  letter-spacing: 0.8px;
+}
+
+.cal-trim-badge {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #ffaa33;
+  background: rgba(255, 170, 51, 0.15);
+  padding: 2px 7px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 170, 51, 0.3);
+}
+
+.cal-trim-btn-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.cal-trim-btn {
+  flex: 1;
+  padding: 4px 0;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  background: rgba(28, 12, 20, 0.9);
+  border: 1px solid rgba(255, 170, 51, 0.3);
+  color: #f5f6fa;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.cal-trim-btn:hover {
+  background: rgba(255, 170, 51, 0.25);
+  border-color: #ffaa33;
+  color: #fff;
+}
+
+.cal-trim-btn.reset {
+  background: rgba(255, 15, 60, 0.15);
+  border-color: rgba(255, 15, 60, 0.4);
+  color: #ff4d6d;
+}
+
+.cal-trim-btn.reset:hover {
+  background: rgba(255, 15, 60, 0.3);
+  border-color: var(--blood-red);
+}
+
+.cal-zero-level-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(37, 99, 235, 0.15);
+  border: 1px solid rgba(37, 99, 235, 0.5);
+  color: #60a5fa;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 2px;
+}
+
+.cal-zero-level-btn:hover {
+  background: rgba(37, 99, 235, 0.3);
+  border-color: #3b82f6;
+  color: #93c5fd;
+  box-shadow: 0 0 10px rgba(37, 99, 235, 0.3);
+}
