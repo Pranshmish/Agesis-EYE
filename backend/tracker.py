@@ -58,6 +58,7 @@ class ZeroLagStreamReader:
     def __init__(self, source):
         self.source = source
         self.latest_frame = None
+        self.frame_id = 0
         self.lock = threading.Lock()
         self.running = True
         self.connected = False
@@ -77,9 +78,8 @@ class ZeroLagStreamReader:
     def _cv2_worker(self):
         src = int(self.source) if str(self.source).isdigit() else self.source
         if isinstance(src, int):
-            # On Windows, cv2.CAP_DSHOW eliminates MSMF frame buffering latency
+            # On Windows, cv2.CAP_DSHOW provides fastest DirectShow access
             cap = cv2.VideoCapture(src, cv2.CAP_DSHOW)
-            cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
             cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
             cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
             cap.set(cv2.CAP_PROP_FPS, 30)
@@ -96,6 +96,7 @@ class ZeroLagStreamReader:
             if ret and frame is not None:
                 with self.lock:
                     self.latest_frame = frame
+                    self.frame_id += 1
                     self.connected = True
                 fc += 1
                 now = time.time()
@@ -104,7 +105,7 @@ class ZeroLagStreamReader:
                     fc, t0 = 0, now
             else:
                 self.connected = False
-                time.sleep(0.02)
+                time.sleep(0.01)
         cap.release()
 
     def _requests_mjpeg_worker(self):
@@ -131,6 +132,7 @@ class ZeroLagStreamReader:
                             if frame is not None:
                                 with self.lock:
                                     self.latest_frame = frame
+                                    self.frame_id += 1
                                 fc += 1
                                 now = time.time()
                                 if now - t0 >= 1.0:
@@ -144,7 +146,9 @@ class ZeroLagStreamReader:
 
     def get_latest(self):
         with self.lock:
-            return self.latest_frame.copy() if self.latest_frame is not None else None
+            if self.latest_frame is not None:
+                return self.latest_frame, self.frame_id
+            return None, 0
 
     def release(self):
         self.running = False

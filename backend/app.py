@@ -92,7 +92,8 @@ new_frame_event = threading.Event()
 def tracking_pipeline_worker():
     """Continuous high-frequency tracking pipeline running independently of client connections."""
     global latest_telemetry, latest_jpeg_bytes, latest_frame_id
-    encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 75]
+    encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 70]
+    last_processed_fid = -1
 
     standby = cv2.imread(os.path.join(BACKEND_DIR, "standby.jpg"))
     if standby is None:
@@ -103,7 +104,7 @@ def tracking_pipeline_worker():
     standby_bytes = standby_jpeg.tobytes()
 
     while True:
-        frame = stream_reader.get_latest()
+        frame, fid = stream_reader.get_latest()
         if frame is None:
             latest_telemetry.update({
                 **turret.get_state(),
@@ -113,9 +114,15 @@ def tracking_pipeline_worker():
             with frame_lock:
                 latest_jpeg_bytes = standby_bytes
                 latest_frame_id += 1
-            new_frame_event.set()
-            time.sleep(0.03)
+            time.sleep(0.04)
             continue
+
+        if fid == last_processed_fid:
+            # Yield CPU to allow video capture thread and serial I/O to run smoothly
+            time.sleep(0.003)
+            continue
+
+        last_processed_fid = fid
 
         annotated, tele = tracker.process_frame(frame)
         turret.update_aiming(tele["dx"], tele["dy"], tele["locked"])
@@ -133,8 +140,6 @@ def tracking_pipeline_worker():
             with frame_lock:
                 latest_jpeg_bytes = jpeg.tobytes()
                 latest_frame_id += 1
-            new_frame_event.set()
-        time.sleep(0.002)
 
 
 # Start tracking pipeline thread immediately
@@ -148,7 +153,6 @@ def mjpeg_generator():
     last_sent_id = -1
 
     while True:
-        new_frame_event.wait(timeout=0.04)
         with frame_lock:
             curr_id = latest_frame_id
             curr_bytes = latest_jpeg_bytes
@@ -157,6 +161,9 @@ def mjpeg_generator():
             last_sent_id = curr_id
             yield (b"--frame\r\n"
                    b"Content-Type: image/jpeg\r\n\r\n" + curr_bytes + b"\r\n")
+            time.sleep(0.008)
+        else:
+            time.sleep(0.012)
 
 
 @app.get("/api/stream")
