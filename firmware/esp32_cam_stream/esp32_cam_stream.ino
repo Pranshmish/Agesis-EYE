@@ -91,7 +91,7 @@ httpd_handle_t stream_httpd = NULL;
 #define PART_BOUNDARY "123456789000000000000987654321"
 static const char* _STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
 
-bool serialStreamActive = false;
+bool serialStreamActive = true;
 unsigned long lastSerialFrameMs = 0;
 
 // Helper: Convert angle (0-180) to 14-bit PWM duty cycle
@@ -407,13 +407,20 @@ void loop() {
     }
 
     // ====================================================
-    // B. Direct UART Serial Command Listener (Fallback)
+    // B. Direct UART Serial Command Listener (Non-blocking)
     // ====================================================
-    if (Serial.available()) {
-        String s = Serial.readStringUntil('\n');
-        s.trim();
-        if (s.length() > 0) {
-            parseCommand(s.c_str());
+    static char serialCmdBuf[64];
+    static uint8_t serialCmdIdx = 0;
+    while (Serial.available() > 0) {
+        char c = (char)Serial.read();
+        if (c == '\n' || c == '\r') {
+            if (serialCmdIdx > 0) {
+                serialCmdBuf[serialCmdIdx] = '\0';
+                parseCommand(serialCmdBuf);
+                serialCmdIdx = 0;
+            }
+        } else if (serialCmdIdx < sizeof(serialCmdBuf) - 1) {
+            serialCmdBuf[serialCmdIdx++] = c;
         }
     }
 

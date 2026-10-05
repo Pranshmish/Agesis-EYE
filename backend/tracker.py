@@ -110,6 +110,7 @@ class ZeroLagStreamReader:
         self.latest_frame = None
         self.frame_id = 0
         self.lock = threading.Lock()
+        self.io_lock = threading.Lock()
         self.running = True
         self.connected = False
         self.fps = 0.0
@@ -167,8 +168,12 @@ class ZeroLagStreamReader:
                 print(f"[STREAM] Connected to {port} for USB camera stream.")
                 time.sleep(0.2)
                 # Request ESP32 to activate serial video streaming
-                ser.write(b"STREAM_ON\n")
-                ser.flush()
+                try:
+                    with self.io_lock:
+                        ser.write(b"STREAM_ON\n")
+                        ser.flush()
+                except Exception:
+                    pass
                 
                 bytes_buf = b""
                 fc, t0 = 0, time.time()
@@ -179,18 +184,25 @@ class ZeroLagStreamReader:
                     # Re-send STREAM_ON every 1.5s if no frames have arrived
                     if now - last_ping_time > 1.5:
                         try:
-                            ser.write(b"STREAM_ON\n")
-                            ser.flush()
+                            with self.io_lock:
+                                ser.write(b"STREAM_ON\n")
+                                ser.flush()
                         except Exception:
                             pass
                         last_ping_time = now
 
-                    waiting = ser.in_waiting
-                    if not waiting:
-                        time.sleep(0.004)
-                        continue
-                    chunk = ser.read(waiting)
+                    chunk = None
+                    try:
+                        with self.io_lock:
+                            waiting = ser.in_waiting
+                            if waiting > 0:
+                                chunk = ser.read(waiting)
+                    except Exception as e:
+                        print(f"[STREAM READ EXCEPTION] {e}")
+                        break
+
                     if not chunk:
+                        time.sleep(0.004)
                         continue
                     if len(bytes_buf) == 0:
                         print(f"[SERIAL] Received first {len(chunk)} bytes from ESP32: {chunk[:40]}")
@@ -346,13 +358,14 @@ class ZeroLagStreamReader:
             return None, 0
 
     def write_serial(self, data: bytes):
-        """Write serial data over the active USB connection."""
+        """Write serial data over the active USB connection safely with I/O lock."""
         if getattr(self, "ser_conn", None) and getattr(self.ser_conn, "is_open", False):
             try:
-                self.ser_conn.write(data)
+                with self.io_lock:
+                    self.ser_conn.write(data)
                 return True
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"[STREAM WRITE EXCEPTION] {e}")
         return False
 
     def release(self):
