@@ -5,7 +5,8 @@
   "invert_tilt": false,
   "kp": 0.04,
   "pan_offset": 0.0,
-  "tilt_offset": 4.0,
-  "smooth_factor": 0.22,
-  "deadband_px": 5.0
+  "tilt_offset": 29.0,
+  "smooth_factor": 0.15,
+  "deadband_px": 5.0,
+  "tracking_enabled": false
 }

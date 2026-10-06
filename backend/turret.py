@@ -45,7 +45,7 @@ class TurretController:
         # Inversion & Smooth Filtering (Pan inverted by default to fix opposite direction)
         self.invert_pan = True
         self.invert_tilt = False
-        self.tracking_enabled = True
+        self.tracking_enabled = False
         self.smooth_factor = 0.22
         self.deadband_px = 5.0
         self.max_slew_step_deg = 6.0
@@ -128,6 +128,7 @@ class TurretController:
                     self.tilt_offset = float(cfg.get("tilt_offset", self.tilt_offset))
                     self.smooth_factor = float(cfg.get("smooth_factor", self.smooth_factor))
                     self.deadband_px = float(cfg.get("deadband_px", self.deadband_px))
+                    self.tracking_enabled = bool(cfg.get("tracking_enabled", False))
             except Exception:
                 pass
 
@@ -143,7 +144,8 @@ class TurretController:
                     "pan_offset": self.pan_offset,
                     "tilt_offset": self.tilt_offset,
                     "smooth_factor": self.smooth_factor,
-                    "deadband_px": self.deadband_px
+                    "deadband_px": self.deadband_px,
+                    "tracking_enabled": self.tracking_enabled
                 }, f, indent=2)
         except Exception:
             pass
