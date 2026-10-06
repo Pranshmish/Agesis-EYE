@@ -488,8 +488,8 @@ class TurretController:
             self.rl_v_pan = 0.55 * self.rl_v_pan + 0.45 * (dpan_dir * alpha)
             self.rl_v_tilt = 0.55 * self.rl_v_tilt + 0.45 * (dtilt_dir * alpha)
 
-            # Slew rate limitation to protect 5V 2A rail
-            max_step = min(3.5, getattr(self, 'max_slew_step_deg', 6.0))
+            # Slew rate limitation to ensure silky smooth RL adjustments
+            max_step = min(1.6, getattr(self, 'max_slew_step_deg', 1.6))
             step_pan = max(-max_step, min(max_step, self.rl_v_pan))
             step_tilt = max(-max_step, min(max_step, self.rl_v_tilt))
 
@@ -529,29 +529,37 @@ class TurretController:
 
             if locked:
                 # 1. Deadband filter to prevent micro-jitter when target is centered
-                db = getattr(self, 'deadband_px', 5.0)
+                db = getattr(self, 'deadband_px', 6.0)
                 eff_dx = 0.0 if abs(dx) < db else (dx - db if dx > 0 else dx + db)
                 eff_dy = 0.0 if abs(dy) < db else (dy - db if dy > 0 else dy + db)
 
                 # 2. Exponential Moving Average (EMA) smoothing on pixel delta
                 alpha = getattr(self, 'smooth_factor', 0.22)
-                self.filtered_dx = (1.0 - alpha) * self.filtered_dx + alpha * float(eff_dx)
-                self.filtered_dy = (1.0 - alpha) * self.filtered_dy + alpha * float(eff_dy)
+                prev_dx = getattr(self, 'filtered_dx', 0.0)
+                prev_dy = getattr(self, 'filtered_dy', 0.0)
+                self.filtered_dx = (1.0 - alpha) * prev_dx + alpha * float(eff_dx)
+                self.filtered_dy = (1.0 - alpha) * prev_dy + alpha * float(eff_dy)
+
+                # 3. Proportional + Derivative (PD) damping to brake smoothly before center
+                d_err_x = self.filtered_dx - prev_dx
+                d_err_y = self.filtered_dy - prev_dy
 
                 if abs(self.filtered_dx) > 0.4 or abs(self.filtered_dy) > 0.4:
-                    # Direction inversion control:
-                    # Pan: Inverted (True) turns servo towards target on this CAD rig
                     pan_inv = getattr(self, 'invert_pan', True)
-                    raw_dpan = (self.filtered_dx if pan_inv else -self.filtered_dx) * self.kp
-
-                    # Tilt: Normal (False) decreases angle to tilt UP when target is elevated (dy < 0)
                     tilt_inv = getattr(self, 'invert_tilt', False)
-                    raw_dtilt = (-self.filtered_dy if tilt_inv else self.filtered_dy) * self.kp
 
-                    # Slew rate cap relaxed to let ESP32's internal 50Hz motion generator glide smoothly
-                    max_slew = getattr(self, 'max_slew_step_deg', 6.0)
-                    step_pan = max(-max_slew, min(max_slew, raw_dpan))
-                    step_tilt = max(-max_slew, min(max_slew, raw_dtilt))
+                    # Derivative damping kd counteracts overshoot
+                    kd = 0.045
+                    raw_dpan_val = (self.filtered_dx * self.kp) + (d_err_x * kd)
+                    raw_dtilt_val = (self.filtered_dy * self.kp) + (d_err_y * kd)
+
+                    # Cap maximum slew step per frame to 1.6 deg (silky smooth, no gear slamming)
+                    max_slew = min(1.8, getattr(self, 'max_slew_step_deg', 1.8))
+                    dpan_clamped = max(-max_slew, min(max_slew, raw_dpan_val))
+                    dtilt_clamped = max(-max_slew, min(max_slew, raw_dtilt_val))
+
+                    step_pan = dpan_clamped if pan_inv else -dpan_clamped
+                    step_tilt = -dtilt_clamped if tilt_inv else dtilt_clamped
 
                     self.pan_angle += step_pan
                     self.tilt_angle += step_tilt
@@ -671,9 +679,14 @@ class TurretController:
         pan_diff = abs(hw_pan - getattr(self, "_last_sent_pan", -999.0))
         tilt_diff = abs(hw_tilt - getattr(self, "_last_sent_tilt", -999.0))
         laser_diff = (laser_val != getattr(self, "_last_sent_laser", None))
+        time_since_last = now - getattr(self, "_last_send_time", 0.0)
 
-        # Skip duplicate packets if nothing changed to keep USB serial bandwidth 100% free for camera frames
-        if not laser_diff and pan_diff < 0.3 and tilt_diff < 0.3 and (now - getattr(self, "_last_send_time", 0.0) < 0.25):
+        # Rate limit to max 30Hz (~33ms) to avoid bus congestion while maintaining fluid motion
+        if not laser_diff and time_since_last < 0.033:
+            return
+
+        # Skip duplicate packets if angles haven't moved (sub-0.12 deg deadband)
+        if not laser_diff and pan_diff < 0.12 and tilt_diff < 0.12:
             return
 
         self._last_sent_pan = hw_pan
