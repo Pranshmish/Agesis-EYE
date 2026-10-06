@@ -131,27 +131,45 @@ void parseCommand(const char* cmd) {
 
     float p = targetPanAngle;
     float t = targetTiltAngle;
-    int l = laserState ? 1 : 0;
+    bool hasP = false;
+    bool hasT = false;
 
     const char* ptrP = strchr(cmd, 'P');
     if (ptrP) {
-        if (*(ptrP + 1) == ':') ptrP++;
-        p = atof(ptrP + 1);
+        const char* np = ptrP + 1;
+        if (*np == ':') np++;
+        while (*np == ' ') np++;
+        if (isdigit(*np) || *np == '+' || *np == '-') {
+            p = atof(np);
+            hasP = true;
+        }
     }
     const char* ptrT = strchr(cmd, 'T');
     if (ptrT) {
-        if (*(ptrT + 1) == ':') ptrT++;
-        t = atof(ptrT + 1);
+        const char* np = ptrT + 1;
+        if (*np == ':') np++;
+        while (*np == ' ') np++;
+        if (isdigit(*np) || *np == '+' || *np == '-') {
+            t = atof(np);
+            hasT = true;
+        }
     }
     const char* ptrL = strchr(cmd, 'L');
     if (ptrL) {
-        if (*(ptrL + 1) == ':') ptrL++;
-        l = atoi(ptrL + 1);
+        const char* np = ptrL + 1;
+        if (*np == ':') np++;
+        while (*np == ' ') np++;
+        if (isdigit(*np)) {
+            laserState = (atoi(np) != 0);
+        }
     }
 
-    targetPanAngle = constrain(p, 0.0f, 180.0f);
-    targetTiltAngle = constrain(t, 15.0f, 165.0f);
-    laserState = (l != 0);
+    if (hasP) {
+        targetPanAngle = constrain(p, 0.0f, 180.0f);
+    }
+    if (hasT) {
+        targetTiltAngle = constrain(t, 15.0f, 165.0f);
+    }
 }
 
 // ----------------------------------------------------
@@ -442,22 +460,34 @@ void loop() {
     // ====================================================
     // C. 5V 2A Slew-Rate Smooth Motion Engine (50 Hz Tick)
     // ====================================================
-    // Interpolates angle smoothly to eliminate current spikes and prevent brownouts
+    // Exponential Ease-In/Ease-Out Motion Engine: eliminates clicking, gear chatter, and oscillations
     if (now - lastServoUpdateMs >= 20) {
         lastServoUpdateMs = now;
 
-        // Pan axis smooth slew
+        // Pan axis smooth exponential slew
         float dPan = targetPanAngle - currentPanAngle;
-        if (abs(dPan) > MAX_SLEW_STEP_DEG) {
-            currentPanAngle += (dPan > 0) ? MAX_SLEW_STEP_DEG : -MAX_SLEW_STEP_DEG;
+        if (abs(dPan) > 0.08f) {
+            float stepPan = dPan * 0.30f;
+            if (abs(stepPan) > MAX_SLEW_STEP_DEG) {
+                stepPan = (stepPan > 0) ? MAX_SLEW_STEP_DEG : -MAX_SLEW_STEP_DEG;
+            } else if (abs(stepPan) < 0.10f) {
+                stepPan = (dPan > 0) ? 0.10f : -0.10f;
+            }
+            currentPanAngle += stepPan;
         } else {
             currentPanAngle = targetPanAngle;
         }
 
-        // Tilt axis smooth slew
+        // Tilt axis smooth exponential slew
         float dTilt = targetTiltAngle - currentTiltAngle;
-        if (abs(dTilt) > MAX_SLEW_STEP_DEG) {
-            currentTiltAngle += (dTilt > 0) ? MAX_SLEW_STEP_DEG : -MAX_SLEW_STEP_DEG;
+        if (abs(dTilt) > 0.08f) {
+            float stepTilt = dTilt * 0.30f;
+            if (abs(stepTilt) > MAX_SLEW_STEP_DEG) {
+                stepTilt = (stepTilt > 0) ? MAX_SLEW_STEP_DEG : -MAX_SLEW_STEP_DEG;
+            } else if (abs(stepTilt) < 0.10f) {
+                stepTilt = (dTilt > 0) ? 0.10f : -0.10f;
+            }
+            currentTiltAngle += stepTilt;
         } else {
             currentTiltAngle = targetTiltAngle;
         }

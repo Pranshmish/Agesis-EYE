@@ -158,7 +158,7 @@ def tracking_pipeline_worker():
                 cv2.circle(annotated, (tx, ty), 6, (0, 255, 255), -1)
             badge_text = f"RL ALIGN: {rl_st['rl_alignment_pct']}% | R: {rl_st['rl_reward']} | {rl_st['rl_stage']}"
             cv2.putText(annotated, badge_text, (15, h_f - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (0, 255, 255), 1, cv2.LINE_AA)
-        else:
+        elif getattr(turret, 'tracking_enabled', False):
             turret.update_aiming(tele["dx"], tele["dy"], tele["locked"])
 
         turret_state = turret.get_state()
